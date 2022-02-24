@@ -1,0 +1,13 @@
+[Unit]
+Description=Read sensors and send data to telegraph metrics ingest
+Wants=network-online.target
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=jamie
+ExecStart=/usr/bin/rpi0_plant_monitor
+
+[Install]
+WantedBy=multi-user.target
