@@ -1,34 +1,34 @@
-use paho_mqtt::{Error, client::Client, MessageBuilder, CreateOptionsBuilder};
+use paho_mqtt::{client::Client, MessageBuilder, CreateOptionsBuilder};
 use std::{time::Duration,string::ToString};
 
 ////////////////////////////////
 ////////// Data Types //////////
 ////////////////////////////////
 pub struct Tag<'a> {
-    pub key:   &'a str, 
-    pub value: &'a str, 
+    pub key:   &'a str,
+    pub value: &'a str,
 }
 
 impl<'a> From<(&'a str,&'a str)> for Tag<'a> {
     #[inline(always)]
     fn from(val: (&'a str,&'a str)) -> Self {
         Tag {
-            key: val.0, 
+            key: val.0,
             value: val.1,
         }
     }
 }
 
 pub struct Field<'a,T> where T: std::fmt::Display {
-    pub key:   &'a str, 
-    pub value: T, 
+    pub key:   &'a str,
+    pub value: T,
 }
 
 impl<'a,T> From<(&'a str,T)> for Field<'a,T>  where T: std::fmt::Display {
     #[inline(always)]
     fn from(val: (&'a str,T)) -> Self {
         Field {
-            key: val.0, 
+            key: val.0,
             value: val.1,
         }
     }
@@ -49,8 +49,8 @@ impl<'a,T> ToString for Sample<'a,T> where T: std::fmt::Display {
         let tag_string = self.tags.iter().map(|t| {
             t.to_string()
         }).collect::<Vec<String>>().join("");
-        
-        let field_string = if self.fields.len()>0 {
+
+        let field_string = if !self.fields.is_empty() {
             let mut temp  : String = self.fields[0].to_string_0th();
             temp += self.fields.iter().skip(1).map(|f| {
                 f.to_string()
@@ -116,21 +116,21 @@ impl<'a,T> std::fmt::Display for Field<'a,T> where T: std::fmt::Display {
 ///////////////////////////////////////////
 ////////// Connection Management //////////
 ///////////////////////////////////////////
-#[derive(Debug)]
-pub enum DBConnectionError {
-    ClientCreationError(Error),
-    ClientConnectionError(Error),
-    MessageSendError(Error),
-}
- 
+// #[derive(Debug)]
+// pub enum DBConnectionError {
+//     ClientCreationError(Error),
+//     ClientConnectionError(Error),
+//     MessageSendError(Error),
+// }
+
 pub struct DBConnection<'a> {
     topic: &'a str,
     client: Client,
 }
 
 impl<'a> DBConnection<'a> {
-    pub fn new<T:ToString>(host: T, topic: &'a str) -> Result<Self,DBConnectionError> {
-        let mut mqtt_client: Client; 
+    pub fn new<T:ToString>(host: T, topic: &'a str) -> Result<Self,paho_mqtt::Error> {
+        let mut mqtt_client: Client;
         let create_opts = CreateOptionsBuilder::new()
             .server_uri(host.to_string())
             .client_id("")
@@ -139,12 +139,12 @@ impl<'a> DBConnection<'a> {
         match Client::new(create_opts) {
             Ok(c) => mqtt_client = c,
             Err(reason) => {
-                return Err(DBConnectionError::ClientCreationError(reason))
+                return Err(reason)
             },
         };
         mqtt_client.set_timeout(Duration::from_secs(5));
         if let Err(reason) = mqtt_client.connect(None) {
-            return Err(DBConnectionError::ClientConnectionError(reason))
+            return Err(reason)
         }
         Ok(Self {
             topic,
@@ -152,17 +152,13 @@ impl<'a> DBConnection<'a> {
         })
     }
 
-    pub fn send<T : std::fmt::Display> (&mut self, data: Sample<'_,T> ) -> Result<(),DBConnectionError> {
+    pub fn send<T : std::fmt::Display> (&mut self, data: Sample<'_,T> ) -> Result<(),paho_mqtt::Error> {
         let msg = MessageBuilder::new()
             .topic(self.topic)
             .payload(data.to_string())
             .qos(1)
             .finalize();
-
-            if let Err(e) = self.client.publish(msg)  {
-                return Err(DBConnectionError::MessageSendError(e))
-            }
-            Ok(())
+        self.client.publish(msg)
     }
 }
 
