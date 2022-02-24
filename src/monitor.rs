@@ -35,7 +35,7 @@ impl Monitor {
     }
 
     async fn local_watch(&mut self, mut time_keeper: mpsc::Receiver<()>) {
-        while let Some(_) = time_keeper.recv().await {
+        while time_keeper.recv().await.is_some() {
             println!("Sampling");
             // get reading from sensor
             let reading = self.env_sense.get_reading();

@@ -25,9 +25,9 @@ impl<'a> Mapping<'a,&str> {
     }
 
     pub fn append_to_string(&self, s: &mut String,with_comma: bool) {
-        if with_comma { s.push_str(",") }
+        if with_comma { s.push(',') }
         s.push_str(self.key);
-        s.push_str("=");
+        s.push('=');
         s.push_str(self.value);
     }
 }
@@ -38,9 +38,9 @@ impl<'a> Mapping<'a,String> {
     }
 
     pub fn append_to_string(&self, s: &mut String,with_comma: bool) {
-        if with_comma { s.push_str(",") }
+        if with_comma { s.push(',') }
         s.push_str(self.key);
-        s.push_str("=");
+        s.push('=');
         s.push_str(self.value.as_str());
     }
 }

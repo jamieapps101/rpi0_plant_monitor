@@ -1,9 +1,9 @@
-use crate::types::{DataPoint,Mapping};
+use crate::types::DataPoint;
 use rumqttc::{AsyncClient,EventLoop,MqttOptions, QoS};
 
 pub struct Connection {
     client: AsyncClient,
-    event_loop: EventLoop,
+    _event_loop: EventLoop,
     qos: QoS,
 }
 
@@ -16,18 +16,18 @@ impl Connection {
     pub fn new<S: Into<String>>(host: S, port: u16) -> Option<Self> {
         let opts = MqttOptions::new("0", host, port);
         // not sure what 10 is in this
-        let (client,event_loop) = AsyncClient::new(opts,10);
+        let (client,_event_loop) = AsyncClient::new(opts,10);
 
         Some(Self {
             client,
-            event_loop,
-            qos: 0.into_QoS(),
+            _event_loop,
+            qos: 0.into_qos(),
         })
     }
 
-    fn set_qos<I: IntoQoS>(mut self, qos: I) -> Self {
-        self.qos = qos.into_QoS(); self
-    }
+    // fn set_qos<I: IntoQoS>(mut self, qos: I) -> Self {
+    //     self.qos = qos.into_QoS(); self
+    // }
 
     pub async fn send<'a, D: Into<DataPoint<'a,String>>>(&self, topic: &str, data_source: D) -> Result<(),ConnectionErr> {
         let data_point: DataPoint<String> = data_source.into();
@@ -36,15 +36,15 @@ impl Connection {
 }
 
 trait IntoQoS {
-    fn into_QoS(self) -> QoS;
+    fn into_qos(self) -> QoS;
 }
 
 impl IntoQoS for QoS {
-    fn into_QoS(self) -> QoS { self }
+    fn into_qos(self) -> QoS { self }
 }
 
 impl IntoQoS for usize {
-    fn into_QoS(self) -> QoS {
+    fn into_qos(self) -> QoS {
         match self {
             0 => QoS::AtMostOnce,
             1 => QoS::AtLeastOnce,
@@ -57,28 +57,29 @@ impl IntoQoS for usize {
 
 
 
-impl<'a>  Into<Vec<u8>> for DataPoint<'a,String> {
-    fn into(self) -> Vec<u8> {
+// impl<'a>  Into<Vec<u8>> for DataPoint<'a,String> {
+impl<'a>  From<DataPoint<'a,String>> for Vec<u8> {
+    fn from(d: DataPoint<'a,String>) -> Vec<u8> {
         // calculate string length
         let mut chars_required = 0;
-        chars_required += self.measurement.len();
-        if self.tag_set.len() > 0 {
+        chars_required += d.measurement.len();
+        if !d.tag_set.is_empty() {
             // for the commas
-            chars_required+=self.tag_set.len();
+            chars_required+=d.tag_set.len();
             // for the tags
-            let lens_iterator = self.tag_set.iter().map(|tags| tags.get_required_chars() );
+            let lens_iterator = d.tag_set.iter().map(|tags| tags.get_required_chars() );
             let tags_len: usize = Iterator::sum(lens_iterator);
             chars_required += tags_len;
         }
-        if self.field_set.len() > 0 {
+        if !d.field_set.is_empty() {
             // for the space and the commas
-            chars_required+=self.field_set.len();
+            chars_required+=d.field_set.len();
             // for the fields
-            let lens_iterator = self.field_set.iter().map(|tags| tags.get_required_chars() );
+            let lens_iterator = d.field_set.iter().map(|tags| tags.get_required_chars() );
             let tags_len: usize = Iterator::sum(lens_iterator);
             chars_required += tags_len;
         }
-        let time_stamp_string = if let Some(time_stamp) = self.time_stamp {
+        let time_stamp_string = if let Some(time_stamp) = d.time_stamp {
             let ts_string = format!(" {time_stamp}");
             chars_required += ts_string.len();
             ts_string
@@ -86,13 +87,13 @@ impl<'a>  Into<Vec<u8>> for DataPoint<'a,String> {
             String::default()
         };
         let mut line = String::with_capacity(chars_required);
-        line.push_str(self.measurement);
-        self.tag_set.iter().for_each(|tag| {
+        line.push_str(d.measurement);
+        d.tag_set.iter().for_each(|tag| {
             tag.append_to_string(&mut line, true);
         });
-        if self.field_set.len()>0 {
-            line.push_str(" ");
-            self.field_set.iter().enumerate().for_each(|(index,field)| {
+        if !d.field_set.is_empty() {
+            line.push(' ');
+            d.field_set.iter().enumerate().for_each(|(index,field)| {
                 field.append_to_string(&mut line,index!=0);
             });
         }
@@ -104,6 +105,7 @@ impl<'a>  Into<Vec<u8>> for DataPoint<'a,String> {
 
 #[cfg(test)]
 mod test {
+    use crate::types::Mapping;
     use super::*;
     #[test]
     fn mapping_to_string() {
