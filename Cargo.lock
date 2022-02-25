@@ -527,6 +527,7 @@ dependencies = [
  "linux-embedded-hal",
  "paho-mqtt",
  "rumqttc",
+ "tokio",
 ]
 
 [[package]]

@@ -10,3 +10,4 @@ linux-embedded-hal = "0.3.2"
 bme280 = "0.2.1"
 paho-mqtt = "0.10.0"
 rumqttc = "0.10.0"
+tokio = { version = "1.17.0" , features = ["sync", "rt", "macros","time"] }
