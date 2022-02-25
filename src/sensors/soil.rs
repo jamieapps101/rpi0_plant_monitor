@@ -40,6 +40,9 @@ impl ADS1115 {
         let conf_reg_lsb = 0b00000011;
         let mut s = Self { i2c_device, address, conf_reg_msb, conf_reg_lsb };
         s.init();
+        s.set_full_scale(Scale::FsPm6_144v);
+        s.set_channel(1);
+        s.update_config();
         s
     }
 
@@ -53,11 +56,20 @@ impl ADS1115 {
         self.read_conv_reg(&mut msb, &mut lsb);
         (msb as u16) << 8 | (lsb as u16)
     }
+    fn set_full_scale(&mut self, scale: Scale) {
+        // clear bits
+        self.conf_reg_msb ^= 0b00001110;
+        self.conf_reg_msb |= u8::from(scale)<<1 ;
+    }
+
     fn set_channel(&mut self, channel: u8) {
         assert!(channel < 4);
         // clear bits
         self.conf_reg_msb ^= 0b01110000;
         self.conf_reg_msb |= 0b01000000 | (channel<<4) ;
+    }
+
+    fn update_config(&mut self) {
         self.write_to_config_reg(self.conf_reg_msb,self.conf_reg_lsb);
     }
 
@@ -73,6 +85,8 @@ impl ADS1115 {
         // read 2 bytes
         let mut data = [0u8; 2];
         self.i2c_device.read(&mut data).unwrap();
+        *data_msb = data[0];
+        *data_lsb = data[1];
     }
 
 }
@@ -105,15 +119,29 @@ impl ADS1115 {
 //   AinpAin3AndAinnGnd, // 111
 // }
 
-// /// Programmable gain amplifier configuration
-// enum Pga {
-//     FsPm6_144v, // 000
-//     FsPm4_096v, // 001
-//     FsPm2_048v, // 010
-//     FsPm1_024v, // 011
-//     FsPm0_512v, // 100
-//     FsPm0_256v, // 101
-// }
+#[allow(dead_code)]
+/// Programmable gain amplifier configuration
+enum Scale {
+    FsPm6_144v, // 000
+    FsPm4_096v, // 001
+    FsPm2_048v, // 010
+    FsPm1_024v, // 011
+    FsPm0_512v, // 100
+    FsPm0_256v, // 101
+}
+
+impl From<Scale> for u8 {
+    fn from(s: Scale) -> Self {
+        match s {
+            Scale::FsPm6_144v => 0b000,
+            Scale::FsPm4_096v => 0b001,
+            Scale::FsPm2_048v => 0b010,
+            Scale::FsPm1_024v => 0b011,
+            Scale::FsPm0_512v => 0b100,
+            Scale::FsPm0_256v => 0b101,
+        }
+    }
+}
 
 // /// Device operating mode
 // enum Mode {
