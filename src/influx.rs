@@ -68,6 +68,30 @@ impl<'a,T> ToString for Sample<'a,T> where T: std::fmt::Display {
     }
 }
 
+impl<'a,T> Sample<'a,T> where T: std::fmt::Display {
+    #[inline(always)]
+    fn into_string(&self, target: &mut String) {
+        // empty strings content, but maintain capacity
+        target.clear();
+        //
+        target.push_str(self.measurement);
+        self.tags.iter().for_each(|t| target.push_str(t.to_string().as_str()) );
+        if !self.fields.is_empty() {
+            target.push_str(self.fields[0].to_string_0th().as_str());
+            self.fields.iter().skip(1).for_each(|f| {
+                target.push_str(f.to_string().as_str());
+            });
+        }
+        if let Some(time) = self.time_stamp {
+            target.push_str(format!(" {}",time).as_str());
+        }
+
+    }
+}
+
+
+
+
 pub struct SampleStack<'a,'b,T> where T: std::fmt::Display {
     pub samples: &'b[Sample<'a,T>],
 }
@@ -151,7 +175,12 @@ mod test {
             fields:      &[],
             time_stamp:  Some(1),
         };
-        assert_eq!(format!("weather 1"),s.to_string());
+        let ref_string = format!("weather 1");
+        assert_eq!(ref_string,s.to_string());
+
+        let mut buf_string = String::new();
+        s.into_string(&mut buf_string);
+        assert_eq!(ref_string,buf_string);
     }
 
     #[test]
@@ -162,7 +191,12 @@ mod test {
             fields:      &[("temperature","82").into()],
             time_stamp:  Some(1465839830100400200),
         };
-        assert_eq!(format!("weather temperature=82 1465839830100400200"),s.to_string());
+        let ref_string = format!("weather temperature=82 1465839830100400200");
+        assert_eq!(ref_string,s.to_string());
+
+        let mut buf_string = String::new();
+        s.into_string(&mut buf_string);
+        assert_eq!(ref_string,buf_string);
     }
 
     #[test]
@@ -173,7 +207,12 @@ mod test {
             fields:      &[("location","us-midwest").into(),("location","texas").into()],
             time_stamp:  Some(01),
         };
-        assert_eq!(format!("weather location=us-midwest,location=texas 1"),s.to_string());
+        let ref_string = format!("weather location=us-midwest,location=texas 1");
+        assert_eq!(ref_string,s.to_string());
+
+        let mut buf_string = String::new();
+        s.into_string(&mut buf_string);
+        assert_eq!(ref_string,buf_string);
     }
 
     #[test]
@@ -184,7 +223,12 @@ mod test {
             fields:      &[],
             time_stamp:  Some(01),
         };
-        assert_eq!(format!("weather,location=us-midwest,season=summer 1"),s.to_string());
+        let ref_string = format!("weather,location=us-midwest,season=summer 1");
+        assert_eq!(ref_string,s.to_string());
+
+        let mut buf_string = String::new();
+        s.into_string(&mut buf_string);
+        assert_eq!(ref_string,buf_string);
     }
 
     #[test]
@@ -195,7 +239,12 @@ mod test {
             fields:      &[],
             time_stamp:  Some(01),
         };
-        assert_eq!(format!("weather,temperature=82,humidity=43 1"),s.to_string());
+        let ref_string = format!("weather,temperature=82,humidity=43 1");
+        assert_eq!(ref_string,s.to_string());
+
+        let mut buf_string = String::new();
+        s.into_string(&mut buf_string);
+        assert_eq!(ref_string,buf_string);
     }
 
     #[test]
@@ -206,6 +255,11 @@ mod test {
             fields:      &[("temperature","82").into()],
             time_stamp:  Some(1465839830100400200),
         };
-        assert_eq!(format!("weather,location=us-midwest temperature=82 1465839830100400200"),s.to_string());
+        let ref_string = format!("weather,location=us-midwest temperature=82 1465839830100400200");
+        assert_eq!(ref_string,s.to_string());
+
+        let mut buf_string = String::new();
+        s.into_string(&mut buf_string);
+        assert_eq!(ref_string,buf_string);
     }
 }
