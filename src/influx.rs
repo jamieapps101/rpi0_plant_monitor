@@ -1,4 +1,4 @@
-use paho_mqtt::{client::Client,AsyncClient, MessageBuilder, CreateOptionsBuilder};
+use paho_mqtt::{AsyncClient, MessageBuilder, CreateOptionsBuilder};
 use std::string::ToString;
 
 ////////////////////////////////
@@ -87,21 +87,12 @@ impl<'a> ToString for Tag<'a> {
     }
 }
 
-
-// impl<'a> std::fmt::Display for Tag<'a> {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, ",{}={}",self.key,self.value)
-//     }
-// }
-
-
 impl<'a,T> Field<'a,T> where T: std::fmt::Display {
     #[inline(always)]
     fn to_string_0th(&self) -> String {
         format!(" {}={}",self.key,self.value)
     }
 }
-
 
 impl<'a,T> std::fmt::Display for Field<'a,T> where T: std::fmt::Display {
     #[inline(always)]
@@ -113,12 +104,6 @@ impl<'a,T> std::fmt::Display for Field<'a,T> where T: std::fmt::Display {
 ///////////////////////////////////////////
 ////////// Connection Management //////////
 ///////////////////////////////////////////
-// #[derive(Debug)]
-// pub enum DBConnectionError {
-//     ClientCreationError(Error),
-//     ClientConnectionError(Error),
-//     MessageSendError(Error),
-// }
 
 pub struct DBConnection {
     topic: String,
@@ -152,25 +137,6 @@ impl DBConnection {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    #[ignore]
-    fn send_data_to_mqtt_server() {
-        let create_opts = CreateOptionsBuilder::new()
-            .server_uri(crate::consts::MQTT_SERVER)
-            .client_id("SomeID")
-            .finalize();
-        let client = Client::new(create_opts).unwrap();
-        // client.set_timeout(Duration::from_secs(5));
-        client.connect(None).unwrap();
-        let msg = MessageBuilder::new()
-            .topic(crate::consts::MQTT_TOPIC)
-            .payload("test data")
-            .qos(0)
-            .finalize();
-        client.publish(msg).unwrap()
-    }
-
     #[test]
     fn no_tags_no_fields() {
         let s : Sample<'_, &str> = Sample {

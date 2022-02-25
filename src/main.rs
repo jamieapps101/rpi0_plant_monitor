@@ -8,8 +8,8 @@ use util::Event;
 mod influx;
 use influx::{DBConnection,Sample};
 
-use linux_embedded_hal::{Delay, I2cdev};
-use bme280::BME280;
+mod sensors;
+use sensors::BME280;
 
 use tokio::{sync::mpsc::channel,time::sleep};
 
@@ -17,11 +17,7 @@ use tokio::{sync::mpsc::channel,time::sleep};
 async fn main() {
     // init sensor
     print!("Initialising Sensor... ");
-    let i2c_bus = I2cdev::new("/dev/i2c-1").unwrap();
-    let mut sensor = BME280::new(i2c_bus,0x76,Delay);
-    if let Err(reason) = sensor.init() {
-        panic!("{:?}",reason);
-    }
+    let mut sensor = BME280::new("/dev/i2c-1",0x76);
     println!("Done");
 
     let (event_sink,mut event_source) = channel::<Event>(5);
@@ -48,16 +44,14 @@ async fn main() {
         while let Some(event) = event_source.recv().await {
             match event {
                 Event::Tick => {
-                    let reading = sensor.measure().unwrap();
+                    let reading_data = sensor.measure();
                     let s : Sample<'_, f32> = Sample {
                         measurement: "atmospherics",
                         tags:        &[("source","pzero").into(),("db_name","environmental").into()],
-                        fields:      &[("temperature",reading.temperature).into(),
-                        ("preasure",reading.pressure).into(),
-                        ("humidity",reading.humidity).into()],
+                        fields:      &reading_data,
                         time_stamp: None,
                     };
-                        // println!("Err: {:?}",reason);
+
                     if let Err(reason) = client.send(s).await {
                         println!("Err: {reason}");
                         break;
