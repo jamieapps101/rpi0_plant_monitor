@@ -124,7 +124,7 @@ impl DBConnection {
         })
     }
 
-    pub async fn send<T : std::fmt::Display> (&mut self, data: Sample<'_,T> ) -> Result<(),paho_mqtt::Error> {
+    pub async fn send<T : std::fmt::Display> (&mut self, data: &Sample<'_,T> ) -> Result<(),paho_mqtt::Error> {
         let msg = MessageBuilder::new()
             .topic(self.topic.as_str())
             .payload(data.to_string())

@@ -524,6 +524,7 @@ name = "rpi0_plant_monitor"
 version = "0.1.0"
 dependencies = [
  "bme280",
+ "embedded-hal",
  "linux-embedded-hal",
  "paho-mqtt",
  "rumqttc",
