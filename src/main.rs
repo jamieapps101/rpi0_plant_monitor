@@ -35,11 +35,12 @@ async fn main() {
 
         // begin looping
         let executor_future = async {
+            let mut sample_string = String::new();
             while let Some(event) = event_source.recv().await {
                 match event {
                     Event::Tick => {
                         let reading = sensor.measure().unwrap();
-                        let s : Sample<'_, f32> = Sample {
+                        let sample : Sample<'_, f32> = Sample {
                             measurement: "atmospherics",
                             tags:        &[("source","pzero").into(),("db_name","environmental").into()],
                             fields:      &[("temperature",reading.temperature).into(),
@@ -47,7 +48,8 @@ async fn main() {
                             ("humidity",reading.humidity).into()],
                             time_stamp: None,
                         };
-                        if let Err(reason) = client.send(s).await {
+                        sample.into_string(&mut sample_string);
+                        if let Err(reason) = client.send(&*sample_string).await {
                             println!("Err: {:?}",reason);
                             break;
                         }

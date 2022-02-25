@@ -19,6 +19,13 @@ impl<'a> From<(&'a str,&'a str)> for Tag<'a> {
     }
 }
 
+impl<'a> ToString for Tag<'a> {
+    #[inline(always)]
+    fn to_string(&self) -> String {
+            format!(",{}={}",self.key,self.value)
+    }
+}
+
 pub struct Field<'a,T> where T: std::fmt::Display {
     pub key:   &'a str,
     pub value: T,
@@ -42,35 +49,9 @@ pub struct Sample<'a,T> where T: std::fmt::Display {
     pub time_stamp:  Option<u64>,
 }
 
-impl<'a,T> ToString for Sample<'a,T> where T: std::fmt::Display {
-    // this formats to the influx data format
-    #[inline(always)]
-    fn to_string(&self) -> String {
-        let tag_string = self.tags.iter().map(|t| {
-            t.to_string()
-        }).collect::<Vec<String>>().join("");
-
-        let field_string = if !self.fields.is_empty() {
-            let mut temp  : String = self.fields[0].to_string_0th();
-            temp += self.fields.iter().skip(1).map(|f| {
-                f.to_string()
-            }).collect::<Vec<String>>().join("").as_str();
-            temp
-        } else {
-            String::from("")
-        };
-
-        if let Some(time) = self.time_stamp {
-            format!("{}{}{} {}",self.measurement,tag_string,field_string,time)
-        } else {
-            format!("{}{}{}",self.measurement,tag_string,field_string)
-        }
-    }
-}
-
 impl<'a,T> Sample<'a,T> where T: std::fmt::Display {
     #[inline(always)]
-    fn into_string(&self, target: &mut String) {
+    pub fn into_string(&self, target: &mut String) {
         // empty strings content, but maintain capacity
         target.clear();
         //
@@ -88,35 +69,6 @@ impl<'a,T> Sample<'a,T> where T: std::fmt::Display {
 
     }
 }
-
-
-
-
-pub struct SampleStack<'a,'b,T> where T: std::fmt::Display {
-    pub samples: &'b[Sample<'a,T>],
-}
-
-impl<'a,'b,T>ToString for SampleStack<'a,'b,T> where T: std::fmt::Display {
-    // this formats to the influx data format
-    #[inline(always)]
-    fn to_string(&self) -> String {
-        self.samples.iter().map(|s| s.to_string()).collect::<Vec<String>>().join("\n")
-    }
-}
-
-impl<'a> ToString for Tag<'a> {
-    #[inline(always)]
-    fn to_string(&self) -> String {
-            format!(",{}={}",self.key,self.value)
-    }
-}
-
-
-// impl<'a> std::fmt::Display for Tag<'a> {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, ",{}={}",self.key,self.value)
-//     }
-// }
 
 
 impl<'a,T> Field<'a,T> where T: std::fmt::Display {
@@ -159,8 +111,8 @@ impl<'a> DBConnection<'a> {
         Self { topic, client: mqtt_client }
     }
 
-    pub async fn send<T : std::fmt::Display> (&mut self, data: Sample<'_,T> ) -> Result<(),rumqttc::ClientError> {
-        self.client.publish(self.topic,QoS::AtLeastOnce,false,data.to_string()).await
+    pub async fn send<V: Into<Vec<u8>>>(&mut self, data: V ) -> Result<(),rumqttc::ClientError> {
+        self.client.publish(self.topic,QoS::AtLeastOnce,false,data).await
     }
 }
 
