@@ -1,5 +1,5 @@
-use paho_mqtt::{client::Client, MessageBuilder, CreateOptionsBuilder};
-use std::{time::Duration,string::ToString};
+use rumqttc::{MqttOptions, AsyncClient,QoS};
+use std::string::ToString;
 
 ////////////////////////////////
 ////////// Data Types //////////
@@ -125,40 +125,18 @@ impl<'a,T> std::fmt::Display for Field<'a,T> where T: std::fmt::Display {
 
 pub struct DBConnection<'a> {
     topic: &'a str,
-    client: Client,
+    client: AsyncClient,
 }
 
 impl<'a> DBConnection<'a> {
-    pub fn new<T:ToString>(host: T, topic: &'a str) -> Result<Self,paho_mqtt::Error> {
-        let mut mqtt_client: Client;
-        let create_opts = CreateOptionsBuilder::new()
-            .server_uri(host.to_string())
-            .client_id("")
-            .finalize();
-
-        match Client::new(create_opts) {
-            Ok(c) => mqtt_client = c,
-            Err(reason) => {
-                return Err(reason)
-            },
-        };
-        mqtt_client.set_timeout(Duration::from_secs(5));
-        if let Err(reason) = mqtt_client.connect(None) {
-            return Err(reason)
-        }
-        Ok(Self {
-            topic,
-            client: mqtt_client,
-        })
+    pub fn new<T:Into<String>>(host: T, port: u16, topic: &'a str) -> Self {
+        let mqttoptions = MqttOptions::new("rpi0", host, port);
+        let (mqtt_client, _eventloop) = AsyncClient::new(mqttoptions, 10);
+        Self { topic, client: mqtt_client }
     }
 
-    pub fn send<T : std::fmt::Display> (&mut self, data: Sample<'_,T> ) -> Result<(),paho_mqtt::Error> {
-        let msg = MessageBuilder::new()
-            .topic(self.topic)
-            .payload(data.to_string())
-            .qos(1)
-            .finalize();
-        self.client.publish(msg)
+    pub async fn send<T : std::fmt::Display> (&mut self, data: Sample<'_,T> ) -> Result<(),rumqttc::ClientError> {
+        self.client.publish(self.topic,QoS::AtLeastOnce,false,data.to_string()).await
     }
 }
 

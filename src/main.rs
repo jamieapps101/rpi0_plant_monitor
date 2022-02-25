@@ -1,17 +1,13 @@
-use std::time::Duration;
-
 mod consts;
-
 mod util;
 use util::Event;
-
 mod influx;
 use influx::{DBConnection,Sample};
 
 use linux_embedded_hal::{Delay, I2cdev};
 use bme280::BME280;
 
-use tokio::{sync::mpsc::channel,time::sleep};
+use tokio::sync::mpsc::channel;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -27,15 +23,8 @@ async fn main() {
     // test connection to server
     loop {
         print!("Connecting to Server... ");
-        let mut client;
-        match DBConnection::new(consts::MQTT_SERVER,consts::MQTT_TOPIC) {
-            Ok(c) => client = c,
-            Err(reason) => {
-                println!("\nErr: {:?}",reason);
-                sleep(Duration::from_secs(10)).await;
-                continue;
-            }
-        }
+        let mut client = DBConnection::new(
+            consts::MQTT_SERVER,consts::MQTT_PORT,consts::MQTT_TOPIC);
         println!("Done");
 
         let (event_sink,mut event_source) = channel::<Event>(5);
@@ -58,7 +47,7 @@ async fn main() {
                             ("humidity",reading.humidity).into()],
                             time_stamp: None,
                         };
-                        if let Err(reason) = client.send(s) {
+                        if let Err(reason) = client.send(s).await {
                             println!("Err: {:?}",reason);
                             break;
                         }
