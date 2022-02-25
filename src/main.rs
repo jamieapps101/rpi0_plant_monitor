@@ -1,13 +1,17 @@
+use std::time::Duration;
+
 mod consts;
+
 mod util;
 use util::Event;
+
 mod influx;
 use influx::{DBConnection,Sample};
 
 use linux_embedded_hal::{Delay, I2cdev};
 use bme280::BME280;
 
-use tokio::sync::mpsc::channel;
+use tokio::{sync::mpsc::channel,time::sleep};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -20,41 +24,47 @@ async fn main() {
     }
     println!("Done");
 
+    let (event_sink,mut event_source) = channel::<Event>(5);
+    // create time management
+    tokio::spawn(async move {
+        util::ticker(event_sink).await
+    });
     // test connection to server
     loop {
         print!("Connecting to Server... ");
-        let mut client = DBConnection::new(
-            consts::MQTT_SERVER,consts::MQTT_PORT,consts::MQTT_TOPIC);
+        let mut client;
+        match DBConnection::new(consts::MQTT_SERVER,consts::MQTT_TOPIC,crate::consts::MQTT_CLIENT_ID).await {
+            Ok(c) => client = c,
+            Err(reason) => {
+                println!("\nErr: {:?}",reason);
+                sleep(Duration::from_secs(10)).await;
+                continue;
+            }
+        }
         println!("Done");
 
-        let (event_sink,mut event_source) = channel::<Event>(5);
-        // create time management
-        let ticker_future = async move {
-            util::ticker(event_sink).await
-        };
 
         // begin looping
-        let executor_future = async {
-            while let Some(event) = event_source.recv().await {
-                match event {
-                    Event::Tick => {
-                        let reading = sensor.measure().unwrap();
-                        let s : Sample<'_, f32> = Sample {
-                            measurement: "atmospherics",
-                            tags:        &[("source","pzero").into(),("db_name","environmental").into()],
-                            fields:      &[("temperature",reading.temperature).into(),
-                            ("preasure",reading.pressure).into(),
-                            ("humidity",reading.humidity).into()],
-                            time_stamp: None,
-                        };
-                        if let Err(reason) = client.send(s).await {
-                            println!("Err: {:?}",reason);
-                            break;
-                        }
+        while let Some(event) = event_source.recv().await {
+            match event {
+                Event::Tick => {
+                    let reading = sensor.measure().unwrap();
+                    let s : Sample<'_, f32> = Sample {
+                        measurement: "atmospherics",
+                        tags:        &[("source","pzero").into(),("db_name","environmental").into()],
+                        fields:      &[("temperature",reading.temperature).into(),
+                        ("preasure",reading.pressure).into(),
+                        ("humidity",reading.humidity).into()],
+                        time_stamp: None,
+                    };
+                        // println!("Err: {:?}",reason);
+                    if let Err(reason) = client.send(s).await {
+                        println!("Err: {reason}");
+                        break;
                     }
                 }
             }
-        };
-        tokio::join!(ticker_future,executor_future);
-    }
+        }
+
+    };
 }

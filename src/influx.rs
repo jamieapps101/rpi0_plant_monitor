@@ -1,4 +1,4 @@
-use rumqttc::{MqttOptions, AsyncClient,QoS};
+use paho_mqtt::{client::Client,AsyncClient, MessageBuilder, CreateOptionsBuilder};
 use std::string::ToString;
 
 ////////////////////////////////
@@ -110,9 +110,6 @@ impl<'a,T> std::fmt::Display for Field<'a,T> where T: std::fmt::Display {
     }
 }
 
-
-
-
 ///////////////////////////////////////////
 ////////// Connection Management //////////
 ///////////////////////////////////////////
@@ -123,26 +120,57 @@ impl<'a,T> std::fmt::Display for Field<'a,T> where T: std::fmt::Display {
 //     MessageSendError(Error),
 // }
 
-pub struct DBConnection<'a> {
-    topic: &'a str,
+pub struct DBConnection {
+    topic: String,
     client: AsyncClient,
 }
 
-impl<'a> DBConnection<'a> {
-    pub fn new<T:Into<String>>(host: T, port: u16, topic: &'a str) -> Self {
-        let mqttoptions = MqttOptions::new("rpi0", host, port);
-        let (mqtt_client, _eventloop) = AsyncClient::new(mqttoptions, 10);
-        Self { topic, client: mqtt_client }
+impl DBConnection {
+    pub async fn new(host: &str, topic: &str, client_id: &str) -> Result<Self,paho_mqtt::Error> {
+        let create_opts = CreateOptionsBuilder::new()
+            .server_uri(host)
+            .client_id(client_id)
+            .finalize();
+        let mqtt_client = AsyncClient::new(create_opts).unwrap();
+        mqtt_client.connect(None).await.unwrap();
+        Ok(Self {
+            topic: topic.to_owned(),
+            client: mqtt_client,
+        })
     }
 
-    pub async fn send<T : std::fmt::Display> (&mut self, data: Sample<'_,T> ) -> Result<(),rumqttc::ClientError> {
-        self.client.publish(self.topic,QoS::AtLeastOnce,false,data.to_string()).await
+    pub async fn send<T : std::fmt::Display> (&mut self, data: Sample<'_,T> ) -> Result<(),paho_mqtt::Error> {
+        let msg = MessageBuilder::new()
+            .topic(self.topic.as_str())
+            .payload(data.to_string())
+            .qos(0)
+            .finalize();
+        self.client.publish(msg).await
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    #[ignore]
+    fn send_data_to_mqtt_server() {
+        let create_opts = CreateOptionsBuilder::new()
+            .server_uri(crate::consts::MQTT_SERVER)
+            .client_id("SomeID")
+            .finalize();
+        let client = Client::new(create_opts).unwrap();
+        // client.set_timeout(Duration::from_secs(5));
+        client.connect(None).unwrap();
+        let msg = MessageBuilder::new()
+            .topic(crate::consts::MQTT_TOPIC)
+            .payload("test data")
+            .qos(0)
+            .finalize();
+        client.publish(msg).unwrap()
+    }
+
     #[test]
     fn no_tags_no_fields() {
         let s : Sample<'_, &str> = Sample {
