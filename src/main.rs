@@ -39,29 +39,33 @@ async fn main() {
         println!("Done");
 
         let (event_sink,mut event_source) = channel::<Event>(5);
-        tokio::spawn(async move {
+        // create time management
+        let ticker_future = async move {
             util::ticker(event_sink).await
-        });
+        };
 
         // begin looping
-        while let Some(event) = event_source.recv().await {
-            match event {
-                Event::Tick => {
-                    let reading = sensor.measure().unwrap();
-                    let s : Sample<'_, f32> = Sample {
-                        measurement: "atmospherics",
-                        tags:        &[("source","pzero").into(),("db_name","environmental").into()],
-                        fields:      &[("temperature",reading.temperature).into(),
-                        ("preasure",reading.pressure).into(),
-                        ("humidity",reading.humidity).into()],
-                        time_stamp: None,
-                    };
-                    if let Err(reason) = client.send(s) {
-                        println!("Err: {:?}",reason);
-                        break;
+        let executor_future = async {
+            while let Some(event) = event_source.recv().await {
+                match event {
+                    Event::Tick => {
+                        let reading = sensor.measure().unwrap();
+                        let s : Sample<'_, f32> = Sample {
+                            measurement: "atmospherics",
+                            tags:        &[("source","pzero").into(),("db_name","environmental").into()],
+                            fields:      &[("temperature",reading.temperature).into(),
+                            ("preasure",reading.pressure).into(),
+                            ("humidity",reading.humidity).into()],
+                            time_stamp: None,
+                        };
+                        if let Err(reason) = client.send(s) {
+                            println!("Err: {:?}",reason);
+                            break;
+                        }
                     }
                 }
             }
-        }
+        };
+        tokio::join!(ticker_future,executor_future);
     }
 }
