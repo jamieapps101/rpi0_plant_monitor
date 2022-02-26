@@ -1,2 +1,4 @@
 /target
 src/consts.rs
+config/*
+!config/*.example.toml

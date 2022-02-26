@@ -1,14 +1,28 @@
-echo "build package"
+#! /usr/bin env bash
+
+echo "-> Build package"
 cargo build --release
 
-echo "stop service if already installed"
+echo "-> Stop service if already installed"
 sudo systemctl stop rpi0_plant_monitor.service
 
-echo "install binary"
+echo "-> Install config file"
+sudo rm -rf /etc/plant_monitor
+sudo mkdir /etc/plant_monitor
+if test -f "./config/config.toml"; then
+    sudo cp ./config/config.toml /etc/plant_monitor/config.toml
+else
+    echo "-> Could not find ./config/config.toml, using example file"
+    sudo cp ./config/config.toml.example /etc/plant_monitor/config.toml
+fi
+
+echo "-> Install binary"
 sudo cp ./target/release/rpi0_plant_monitor /usr/bin/rpi0_plant_monitor
 
-echo "setup systemd scripts"
+echo "-> Setup systemd scripts"
 sudo cp ./scripts/rpi0_plant_monitor.service /etc/systemd/system/
 
-echo "enable and begin systemd service"
+echo "-> Enable and begin systemd service"
 sudo systemctl enable --now rpi0_plant_monitor.service
+
+echo "-> Complete"

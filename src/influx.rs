@@ -7,6 +7,7 @@ use paho_mqtt::{
     create_options::PersistenceType
 };
 use std::string::ToString;
+use crate::config::MqttConfig;
 
 ////////////////////////////////
 ////////// Data Types //////////
@@ -118,16 +119,16 @@ pub struct DBConnection {
 }
 
 impl DBConnection {
-    pub async fn new(host: &str, topic: &str, client_id: &str) -> Result<Self,paho_mqtt::Error> {
+    pub async fn new(config: MqttConfig) -> Result<Self,paho_mqtt::Error> {
         let create_opts = CreateOptionsBuilder::new()
-            .server_uri(host)
-            .client_id(client_id)
+            .server_uri(config.server)
+            .client_id(config.client_id)
             .persistence(PersistenceType::None)
             .finalize();
         let mqtt_client = AsyncClient::new(create_opts).unwrap();
         mqtt_client.connect(None).await.unwrap();
         Ok(Self {
-            topic: topic.to_owned(),
+            topic: config.topic,
             client: mqtt_client,
         })
     }
