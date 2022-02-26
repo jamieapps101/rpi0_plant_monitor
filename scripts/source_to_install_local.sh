@@ -1,7 +1,8 @@
 #! /usr/bin env bash
 
 echo "-> Build package"
-cargo build --release
+cargo build
+# cargo build --release
 
 echo "-> Stop service if already installed"
 sudo systemctl stop rpi0_plant_monitor.service
