@@ -6,38 +6,27 @@ use std::{
 };
 
 #[derive(Debug)]
-pub enum ConfigLoadResult {
-    Ok(Config),
+pub enum ConfigLoadErr {
     CouldNotOpenFile,
     CouldNotReadFile,
     ParseError(toml::de::Error),
 }
 
-impl ConfigLoadResult {
-    pub fn unwrap(self) -> Config {
-        if let Self::Ok(config) = self {
-            config
-        } else {
-            panic!("Could not extract config: {self:?}");
-        }
-    }
-}
-
-pub fn load<P: AsRef<Path>>(path: P) -> ConfigLoadResult {
+pub fn load<P: AsRef<Path>>(path: P) -> Result<Config,ConfigLoadErr> {
     let f = match File::open(path) {
         Ok(f) => f,
         Err(_reason) => {
-            return ConfigLoadResult::CouldNotOpenFile;
+            return Err(ConfigLoadErr::CouldNotOpenFile);
         }
     };
     let mut reader = BufReader::new(f);
     let mut config_string = String::new();
     if reader.read_to_string(&mut config_string).is_err() {
-        return ConfigLoadResult::CouldNotReadFile;
+        return Err(ConfigLoadErr::CouldNotReadFile);
     }
     match toml::from_str(config_string.as_str()) {
-        Ok(c) => ConfigLoadResult::Ok(c),
-        Err(reason) => ConfigLoadResult::ParseError(reason),
+        Ok(c) => Ok(c),
+        Err(reason) => Err(ConfigLoadErr::ParseError(reason)),
     }
 }
 

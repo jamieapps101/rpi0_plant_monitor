@@ -18,7 +18,8 @@ else
 fi
 
 echo "-> Install binary"
-sudo cp ./target/release/rpi0_plant_monitor /usr/bin/rpi0_plant_monitor
+# sudo cp ./target/release/rpi0_plant_monitor /usr/bin/rpi0_plant_monitor
+sudo cp ./target/debug/rpi0_plant_monitor /usr/bin/rpi0_plant_monitor
 
 echo "-> Setup systemd scripts"
 sudo cp ./scripts/rpi0_plant_monitor.service /etc/systemd/system/

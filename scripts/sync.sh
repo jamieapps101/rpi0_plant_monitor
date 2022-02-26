@@ -5,5 +5,5 @@ rsync -a \
     `pwd` \
     pzero:/home/jamie/
 
-echo "Building"
+# echo "Building"
 # ssh pzero "cd /home/jamie/rpi0_plant_monitor; /home/jamie/.cargo/bin/cargo build"
