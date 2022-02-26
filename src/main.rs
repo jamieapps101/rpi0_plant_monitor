@@ -8,7 +8,9 @@ use util::Event;
 mod influx;
 use influx::{DBConnection,Sample};
 
+#[allow(dead_code)]
 mod sensors;
+#[allow(unused_imports)]
 use sensors::{BME280,SoilSensor};
 
 use tokio::{sync::mpsc::channel,time::sleep};
@@ -18,7 +20,7 @@ async fn main() {
     // init sensor
     print!("Initialising Sensors... ");
     let mut env_sensor = BME280::new("/dev/i2c-1",0x76);
-    let mut soil_sensor =  SoilSensor::new("(/dev/i2c-1", 0x49);
+    // let mut soil_sensor =  SoilSensor::new("(/dev/i2c-1", 0x49);
     println!("Done");
 
     let (event_sink,mut event_source) = channel::<Event>(5);
@@ -46,7 +48,7 @@ async fn main() {
             match event {
                 Event::Tick => {
                     let env_reading_data = env_sensor.measure();
-                    let mut s : Sample<'_, f32> = Sample {
+                    let s : Sample<'_, f32> = Sample {
                         measurement: "atmospherics",
                         tags:        &[("source","pzero").into(),("db_name","environmental").into()],
                         fields:      &env_reading_data,
@@ -58,12 +60,12 @@ async fn main() {
                         break;
                     }
 
-                    let soil_reading_data = soil_sensor.measure();
-                    s.fields = &soil_reading_data;
-                    if let Err(reason) = client.send(&s).await {
-                        println!("Err: {reason}");
-                        break;
-                    }
+                    // let soil_reading_data = soil_sensor.measure();
+                    // s.fields = &soil_reading_data;
+                    // if let Err(reason) = client.send(&s).await {
+                    //     println!("Err: {reason}");
+                    //     break;
+                    // }
 
                 }
             }

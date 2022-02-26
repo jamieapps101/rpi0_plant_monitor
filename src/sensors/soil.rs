@@ -50,16 +50,30 @@ impl ADS1115 {
         self.write_to_config_reg(self.conf_reg_msb,self.conf_reg_lsb);
     }
 
-    fn measure(&mut self) -> u16 {
+    fn measure(&mut self) -> f32 {
         let mut msb = 0;
         let mut lsb = 0;
         self.read_conv_reg(&mut msb, &mut lsb);
-        (msb as u16) << 8 | (lsb as u16)
+        let mut value = (msb as u16) << 8 | (lsb as u16);
+
+        // if the msb is one, the value is negative
+        let mut is_neg = false;
+        if 0x8000&value == 0x8000 {
+            value ^= 0x8000;
+            is_neg = true;
+        }
+
+        let mut f_value = value as f32;
+        if is_neg {
+            f_value *= -1.0;
+        }
+
+        f_value
     }
     fn set_full_scale(&mut self, scale: Scale) {
         // clear bits
         self.conf_reg_msb ^= 0b00001110;
-        self.conf_reg_msb |= u8::from(scale)<<1 ;
+        self.conf_reg_msb |= scale.into_bits()<<1 ;
     }
 
     fn set_channel(&mut self, channel: u8) {
@@ -130,15 +144,26 @@ enum Scale {
     FsPm0_256v, // 101
 }
 
-impl From<Scale> for u8 {
-    fn from(s: Scale) -> Self {
-        match s {
+impl Scale {
+    fn into_bits(self)-> u8 {
+        match self {
             Scale::FsPm6_144v => 0b000,
             Scale::FsPm4_096v => 0b001,
             Scale::FsPm2_048v => 0b010,
             Scale::FsPm1_024v => 0b011,
             Scale::FsPm0_512v => 0b100,
             Scale::FsPm0_256v => 0b101,
+        }
+    }
+
+    fn get_scale(&self) -> f32 {
+        match self {
+            Scale::FsPm6_144v => (6.144/2.0)/2.0f32.powi(15),
+            Scale::FsPm4_096v => (4.096/2.0)/2.0f32.powi(15),
+            Scale::FsPm2_048v => (2.048/2.0)/2.0f32.powi(15),
+            Scale::FsPm1_024v => (1.024/2.0)/2.0f32.powi(15),
+            Scale::FsPm0_512v => (0.512/2.0)/2.0f32.powi(15),
+            Scale::FsPm0_256v => (0.256/2.0)/2.0f32.powi(15),
         }
     }
 }
