@@ -1,19 +1,18 @@
 use std::time::Duration;
+use tokio::{sync::mpsc::channel,time::sleep};
 
 mod consts;
-
 mod util;
-use util::Event;
-
 mod influx;
-use influx::{DBConnection,Sample};
-
 #[allow(dead_code)]
 mod sensors;
+mod config;
+
+use util::Event;
+use influx::{DBConnection,Sample};
 #[allow(unused_imports)]
 use sensors::{BME280,SoilSensor};
 
-use tokio::{sync::mpsc::channel,time::sleep};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {

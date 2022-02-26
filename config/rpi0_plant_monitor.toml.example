@@ -4,7 +4,7 @@ client_id = "client_0"
 topic     = "telegraf/topic/here"
 qos       = 0
 
-[sensor]
+[sampling]
 sample_period_seconds = 60
 measurement_name      = "atmospheric"
 tags                  = [["source","pzero"]]
