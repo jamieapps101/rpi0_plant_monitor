@@ -2,6 +2,8 @@ use paho_mqtt::{
     AsyncClient, 
     MessageBuilder, 
     CreateOptionsBuilder,
+    AsyncReceiver,
+    message::Message,
     create_options::PersistenceType
 };
 use std::string::ToString;
@@ -112,28 +114,30 @@ impl<'a,T> std::fmt::Display for Field<'a,T> where T: std::fmt::Display {
 ///////////////////////////////////////////
 
 pub struct DBConnection {
-    topic: String,
+    publish_topic: String,
     client: AsyncClient,
 }
 
 impl DBConnection {
-    pub async fn new(config: MqttConfig) -> Result<Self,paho_mqtt::Error> {
+    pub async fn new(config: MqttConfig) -> Result<(Self,AsyncReceiver<Option<Message>>),paho_mqtt::Error> {
         let create_opts = CreateOptionsBuilder::new()
             .server_uri(config.server)
             .client_id(config.client_id)
             .persistence(PersistenceType::None)
             .finalize();
-        let mqtt_client = AsyncClient::new(create_opts).unwrap();
+        let mut mqtt_client = AsyncClient::new(create_opts).unwrap();
+        let stream = mqtt_client.get_stream(5);
         mqtt_client.connect(None).await.unwrap();
-        Ok(Self {
-            topic: config.topic,
+        mqtt_client.subscribe_many(&[config.subscribe_topic], &[config.qos as i32]);
+        Ok((Self {
+            publish_topic: config.publish_topic,
             client: mqtt_client,
-        })
+        },stream))
     }
 
     pub async fn send<T : std::fmt::Display> (&mut self, data: &Sample<'_,T> ) -> Result<(),paho_mqtt::Error> {
         let msg = MessageBuilder::new()
-            .topic(self.topic.as_str())
+            .topic(self.publish_topic.as_str())
             .payload(data.to_string())
             .qos(0)
             .finalize();

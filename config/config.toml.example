@@ -1,7 +1,9 @@
 [mqtt]
 server    = "tcp://server:1883"
 client_id = "client_0"
-topic     = "telegraf/topic/here"
+publish_topic     = "telegraf/topic/here"
+subscribe_topic   = "receive/topic/here"
+
 qos       = 0
 
 [sampling]

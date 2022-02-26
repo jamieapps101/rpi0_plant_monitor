@@ -41,7 +41,8 @@ pub struct Config {
 pub struct MqttConfig {
     pub server: String,
     pub client_id: String,
-    pub topic: String,
+    pub publish_topic: String,
+    pub subscribe_topic: String,
     pub qos: u8,
 }
 
@@ -63,7 +64,8 @@ mod test {
             mqtt: MqttConfig {
                 server    : "tcp://server:1883".to_owned(),
                 client_id : "client_0".to_owned(),
-                topic     : "telegraf/topic/here".to_owned(),
+                publish_topic     : "telegraf/topic/here".to_owned(),
+                subscribe_topic   : "receive/topic/here".to_owned(),
                 qos       : 0
             }, 
             sampling: SamplingConfig {
