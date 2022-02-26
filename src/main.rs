@@ -19,9 +19,11 @@ use config::load;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    // load config toml
+    // load config toml, from somewhere.
     print!("Reading config...       ");
-    let config = load("/etc/plant_monitor/config.toml").unwrap();
+    let config =  load("./config/config.toml")
+        .or(load("/etc/plant_monitor/config.toml"))
+        .or(load("./config/config.toml.example")).unwrap();
     println!("Done");
 
     // init sensor

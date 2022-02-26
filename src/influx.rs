@@ -149,22 +149,27 @@ impl DBConnection {
 mod test {
     use super::*;
 
-    // #[tokio::test]
-    // #[ignore]
-    // async fn test_mqtt_connection() {
-    //     let create_opts = CreateOptionsBuilder::new()
-    //         .server_uri(crate::consts::MQTT_SERVER)
-    //         .client_id(crate::consts::MQTT_CLIENT_ID)
-    //         .finalize();
-    //     let mqtt_client = AsyncClient::new(create_opts).unwrap();
-    //     mqtt_client.connect(None).await.unwrap();
-    //     let msg = MessageBuilder::new()
-    //         .topic(crate::consts::MQTT_TOPIC)
-    //         .payload("test data")
-    //         .qos(0)
-    //         .finalize();
-    //     mqtt_client.publish(msg).await.unwrap()
-    // }
+    #[tokio::test]
+    #[ignore]
+    async fn test_mqtt_connection() {
+        let config = crate::config::load("./config/config.toml").unwrap();
+        println!("config:\n{config:?}");
+        println!("server:        {:?}",config.mqtt.server);
+        println!("client_id:     {:?}",config.mqtt.client_id);
+        println!("publish_topic: {:?}",config.mqtt.publish_topic);
+        let create_opts = CreateOptionsBuilder::new()
+            .server_uri(config.mqtt.server)
+            .client_id(config.mqtt.client_id)
+            .finalize();
+        let mqtt_client = AsyncClient::new(create_opts).unwrap();
+        mqtt_client.connect(None).await.unwrap();
+        let msg = MessageBuilder::new()
+            .topic(config.mqtt.publish_topic)
+            .payload("test data")
+            .qos(0)
+            .finalize();
+        mqtt_client.publish(msg).await.unwrap()
+    }
     #[test]
     fn no_tags_no_fields() {
         let s : Sample<'_, &str> = Sample {
