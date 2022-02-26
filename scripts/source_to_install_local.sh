@@ -2,13 +2,13 @@ echo "build package"
 cargo build --release
 
 echo "stop service if already installed"
-sudo systemctl stop bme280monitor.service
+sudo systemctl stop rpi0_plant_monitor.service
 
 echo "install binary"
-sudo cp ./target/release/bme280monitor /usr/bin/bme280monitor
+sudo cp ./target/release/rpi0_plant_monitor /usr/bin/rpi0_plant_monitor
 
 echo "setup systemd scripts"
-sudo cp ./bme280monitor.service /etc/systemd/system/
+sudo cp ./scripts/rpi0_plant_monitor.service /etc/systemd/system/
 
 echo "enable and begin systemd service"
-sudo systemctl enable --now bme280monitor.service
+sudo systemctl enable --now rpi0_plant_monitor.service
