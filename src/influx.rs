@@ -2,8 +2,6 @@ use paho_mqtt::{
     AsyncClient, 
     MessageBuilder, 
     CreateOptionsBuilder,
-    errors::Error,
-    error_message,
     create_options::PersistenceType
 };
 use std::string::ToString;
