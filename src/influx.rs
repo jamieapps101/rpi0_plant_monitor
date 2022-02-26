@@ -1,4 +1,11 @@
-use paho_mqtt::{AsyncClient, MessageBuilder, CreateOptionsBuilder};
+use paho_mqtt::{
+    AsyncClient, 
+    MessageBuilder, 
+    CreateOptionsBuilder,
+    errors::Error,
+    error_message,
+    create_options::PersistenceType
+};
 use std::string::ToString;
 
 ////////////////////////////////
@@ -115,6 +122,7 @@ impl DBConnection {
         let create_opts = CreateOptionsBuilder::new()
             .server_uri(host)
             .client_id(client_id)
+            .persistence(PersistenceType::None)
             .finalize();
         let mqtt_client = AsyncClient::new(create_opts).unwrap();
         mqtt_client.connect(None).await.unwrap();
@@ -137,6 +145,23 @@ impl DBConnection {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_mqtt_connection() {
+        let create_opts = CreateOptionsBuilder::new()
+            .server_uri(crate::consts::MQTT_SERVER)
+            .client_id(crate::consts::MQTT_CLIENT_ID)
+            .finalize();
+        let mqtt_client = AsyncClient::new(create_opts).unwrap();
+        mqtt_client.connect(None).await.unwrap();
+        let msg = MessageBuilder::new()
+            .topic(crate::consts::MQTT_TOPIC)
+            .payload("test data")
+            .qos(0)
+            .finalize();
+        mqtt_client.publish(msg).await.unwrap()
+    }
     #[test]
     fn no_tags_no_fields() {
         let s : Sample<'_, &str> = Sample {
