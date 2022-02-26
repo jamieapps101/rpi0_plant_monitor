@@ -1,2 +1,3 @@
 /target
 src/consts.rs
+config/*.toml
