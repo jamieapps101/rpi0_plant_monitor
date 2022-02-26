@@ -15,5 +15,7 @@ paho-mqtt = "0.10.0"
 futures-util = "0.3.21"
 
 toml = "0.5.8"
+serde_json = "1.0"
 serde = "1.0.97"
 serde_derive = "1.0"
+rppal = "0.13.1"

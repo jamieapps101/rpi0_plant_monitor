@@ -1,6 +1,7 @@
 use std::time::Duration;
 use futures_util::StreamExt;
 use tokio::{sync::mpsc::channel,time::sleep};
+use std::sync::Arc;
 
 mod util;
 mod influx;
@@ -15,6 +16,7 @@ use influx::{DBConnection,Sample};
 #[allow(unused_imports)]
 use sensors::{BME280,SoilSensor};
 use config::load;
+use actuation::{Command,Gpio};
 
 
 #[tokio::main(flavor = "current_thread")]
@@ -22,8 +24,8 @@ async fn main() {
     // load config toml, from somewhere.
     print!("Reading config...       ");
     let config =  load("./config/config.toml")
-        .or(load("/etc/plant_monitor/config.toml"))
-        .or(load("./config/config.toml.example")).unwrap();
+        .or_else(|_| load("/etc/plant_monitor/config.toml"))
+        .or_else(|_| load("./config/config.toml.example")).unwrap();
     println!("Done");
 
     // init sensor
@@ -33,7 +35,7 @@ async fn main() {
     println!("Done");
 
     // init actuation
-    // TODO: this
+    let gpio = Arc::new(Gpio::new());
 
     let (event_sink,mut event_source) = channel::<Event>(5);
     // create time management
@@ -54,10 +56,20 @@ async fn main() {
         println!("Done");
 
         // setup async for receiving messages
+        // accepts json commands, eg:
+        // "{\"gpio\":1,\"state\":\"High\"}"
+        let gpio_c = gpio.clone();
         tokio::spawn(async move {
             while let Some(msg_opt) = msg_stream.next().await {
                 if let Some(msg) = msg_opt {
-                    println!("Got message: {msg:?}");
+                    let message_content = std::str::from_utf8(msg.payload()).unwrap();
+                    println!("Got message: \"{message_content}\"");
+
+                    let command : Result<Command, serde_json::Error> = serde_json::from_str(message_content);
+                    match command {
+                        Ok(command) => (*gpio_c).set(command),
+                        Err(reason) => println!("Unknown message: {message_content}\n({reason})")
+                    }
                 }
             }
         });
