@@ -1,5 +1,4 @@
 use serde_derive::Deserialize;
-use toml;
 use std::{
     fs::File,
     io::{BufReader,prelude::*},
@@ -17,7 +16,7 @@ pub enum ConfigLoadResult {
 impl ConfigLoadResult {
     pub fn unwrap(self) -> Config {
         if let Self::Ok(config) = self {
-            return config
+            config
         } else {
             panic!("Could not extract config: {self:?}");
         }
@@ -45,23 +44,23 @@ pub fn load<P: AsRef<Path>>(path: P) -> ConfigLoadResult {
 
 #[derive(Deserialize,PartialEq,Debug)]
 pub struct Config {
-    mqtt: MqttConfig,
-    sampling: SamplingConfig
+    pub mqtt: MqttConfig,
+    pub sampling: SamplingConfig
+}
+
+#[derive(Deserialize,PartialEq,Debug,Clone)]
+pub struct MqttConfig {
+    pub server: String,
+    pub client_id: String,
+    pub topic: String,
+    pub qos: u8,
 }
 
 #[derive(Deserialize,PartialEq,Debug)]
-struct MqttConfig {
-    server: String,
-    client_id: String,
-    topic: String,
-    qos: u8,
-}
-
-#[derive(Deserialize,PartialEq,Debug)]
-struct SamplingConfig {
-    sample_period_seconds: u64,
-    measurement_name: String,
-    tags: Vec<(String,String)>
+pub struct SamplingConfig {
+    pub sample_period_seconds: u64,
+    pub measurement_name: String,
+    pub tags: Vec<(String,String)>
 }
 
 #[cfg(test)]
@@ -69,7 +68,7 @@ mod test {
     use super::*;
     #[test]
     fn load_example_config() {
-        let example_path = "config/rpi0_plant_monitor.toml.example";
+        let example_path = "config/config.toml.example";
         let loaded_config = load(example_path).unwrap();
         let ref_config = Config {
             mqtt: MqttConfig {
