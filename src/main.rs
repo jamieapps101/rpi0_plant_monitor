@@ -1,10 +1,13 @@
 use std::time::Duration;
+use futures_util::StreamExt;
 use tokio::{sync::mpsc::channel,time::sleep};
 
 mod util;
 mod influx;
 #[allow(dead_code)]
 mod sensors;
+#[allow(dead_code)]
+mod actuation;
 mod config;
 
 use util::Event;
@@ -27,6 +30,9 @@ async fn main() {
     // let mut soil_sensor =  SoilSensor::new("(/dev/i2c-1", 0x49);
     println!("Done");
 
+    // init actuation
+    // TODO: this
+
     let (event_sink,mut event_source) = channel::<Event>(5);
     // create time management
     tokio::spawn(async move {
@@ -35,7 +41,7 @@ async fn main() {
     // test connection to server
     loop {
         print!("Connecting to Server... ");
-        let mut client = match DBConnection::new(config.mqtt.clone()).await {
+        let (mut client,mut msg_stream) = match DBConnection::new(config.mqtt.clone()).await {
             Ok(c) => c,
             Err(reason) => {
                 println!("\nErr: {:?}",reason);
@@ -44,6 +50,16 @@ async fn main() {
             }
         };
         println!("Done");
+
+        // setup async for receiving messages
+        tokio::spawn(async move {
+            while let Some(msg_opt) = msg_stream.next().await {
+                if let Some(msg) = msg_opt {
+                    println!("Got message: {msg:?}");
+                }
+            }
+        });
+
 
 
         // begin looping
