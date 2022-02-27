@@ -31,7 +31,7 @@ async fn main() {
     // init sensor
     print!("Initialising Sensors... ");
     let mut env_sensor  = BME280::new("/dev/i2c-1",0x76);
-    let mut soil_sensor = SoilSensor::new("(/dev/i2c-1", 0x48);
+    let mut soil_sensor = SoilSensor::new("/dev/i2c-1", 0x48);
     println!("Done");
 
     // init actuation

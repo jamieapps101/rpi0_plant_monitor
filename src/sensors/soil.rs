@@ -21,7 +21,7 @@ impl SoilSensor {
 
     pub fn measure(&mut self) -> [Field<f32>;1] {
         let m = self.adc.measure();
-        [("MoistureContent", m).into()]
+        [("moisture", m).into()]
     }
 }
 
@@ -40,7 +40,6 @@ const CONVERSION_REG_ADDR : u8 = 0;
 
 impl ADS1115 {
     pub fn new<P: AsRef<Path>>(path: P, address: u8) -> Self {
-        println!(" fn");
         let i2c_device = I2cdev::new(path).unwrap();
         let conf_reg_msb = 0b01000100;
         let conf_reg_lsb = 0b10000011;
@@ -51,7 +50,6 @@ impl ADS1115 {
     }
 
     fn measure(&mut self) -> f32 {
-        println!("measure");
         let mut msb = 0;
         let mut lsb = 0;
         self.read_conv_reg(&mut msb, &mut lsb);
@@ -137,6 +135,7 @@ enum Scale {
 }
 
 impl Scale {
+    #[allow(clippy::wrong_self_convention)]
     fn into_bits(&self)-> u8 {
         match self {
             Scale::FsPm6_144v => 0b000,
