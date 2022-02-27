@@ -48,7 +48,7 @@ async fn main() {
             match event {
                 Event::Tick => {
                     let env_reading_data = env_sensor.measure();
-                    let s : Sample<'_, f32> = Sample {
+                    let mut s : Sample<'_, f32> = Sample {
                         measurement: "atmospherics",
                         tags:        &[("source","pzero").into(),("db_name","environmental").into()],
                         fields:      &env_reading_data,
