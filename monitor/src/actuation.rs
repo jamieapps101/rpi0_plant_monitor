@@ -1,8 +1,10 @@
 use common::serde_derive::{Deserialize,Serialize};
 use rppal::gpio::Gpio as rppal_gpio;
+use rppal::gpio::OutputPin;
 
 pub struct Gpio {
-    dev: rppal_gpio
+    dev: rppal_gpio,
+    led_pin: OutputPin
 }
 
 #[derive(Debug,Deserialize,Serialize)]
@@ -11,15 +13,16 @@ pub enum GpioState { High, Low }
 
 impl Gpio {
     pub fn new() -> Self { 
-        Self { dev: rppal_gpio::new().unwrap() } 
+        let dev = rppal_gpio::new().unwrap(); 
+        let led_pin = dev.get(5).unwrap().into_output();
+        Self { dev, led_pin } 
     }
 
-    pub fn set(&self, c: Command) {
+    pub fn set(&mut self, c: Command) {
         println!("Setting pin {} {:?}",c.gpio,c.state);
-        let pin_inst = self.dev.get(c.gpio).unwrap();
         match c.state {
-            GpioState::High => pin_inst.into_output().set_high(),
-            GpioState::Low  => pin_inst.into_output().set_low(),
+            GpioState::High => self.led_pin.set_high(),
+            GpioState::Low  => self.led_pin.set_low(),
         }
         
     }
