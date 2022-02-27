@@ -53,19 +53,8 @@ impl ADS1115 {
         let mut msb = 0;
         let mut lsb = 0;
         self.read_conv_reg(&mut msb, &mut lsb);
-        let mut value = (msb as u16) << 8 | (lsb as u16);
-
-        // if the msb is one, the value is negative
-        let mut is_neg = false;
-        if 0x8000&value == 0x8000 {
-            value ^= 0x8000;
-            is_neg = true;
-        }
-        
-        let mut f_value = value as f32;
-        if is_neg {
-            f_value *= -1.0;
-        }
+        let value = (msb as i16) << 8 | (lsb as i16);
+        let f_value = value as f32;
         f_value*self.scale.get_scale()
     }
     fn set_full_scale(&mut self, scale: Scale) {
@@ -176,5 +165,14 @@ mod test {
         ss.adc.set_channel(0);
         ss.adc.update_config();
         println!("{:08b}-{:08b}",ss.adc.conf_reg_msb,ss.adc.conf_reg_lsb);
+    }
+
+    #[test]
+    fn test_twos_compl_() {
+        let u_a : u8 = 0b10011100;
+        let u_b : u8 = 0b01010100;
+        let i_c = (u_a as i16)<<8 | u_b as i16;
+        println!("val: {i_c}");
+        println!("bin: {i_c:016b}");
     }
 }
