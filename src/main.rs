@@ -30,8 +30,8 @@ async fn main() {
 
     // init sensor
     print!("Initialising Sensors... ");
-    let mut env_sensor = BME280::new("/dev/i2c-1",0x76);
-    // let mut soil_sensor =  SoilSensor::new("(/dev/i2c-1", 0x49);
+    let mut env_sensor  = BME280::new("/dev/i2c-1",0x76);
+    let mut soil_sensor = SoilSensor::new("(/dev/i2c-1", 0x48);
     println!("Done");
 
     // init actuation
@@ -85,7 +85,7 @@ async fn main() {
             match event {
                 Event::Tick => {
                     let env_reading_data = env_sensor.measure();
-                    let s : Sample<'_, f32> = Sample {
+                    let mut s : Sample<'_, f32> = Sample {
                         measurement: measurement_name,
                         tags:        &tags[..],
                         fields:      &env_reading_data,
@@ -97,12 +97,12 @@ async fn main() {
                         break;
                     }
 
-                    // let soil_reading_data = soil_sensor.measure();
-                    // s.fields = &soil_reading_data;
-                    // if let Err(reason) = client.send(&s).await {
-                    //     println!("Err: {reason}");
-                    //     break;
-                    // }
+                    let soil_reading_data = soil_sensor.measure();
+                    s.fields = &soil_reading_data;
+                    if let Err(reason) = client.send(&s).await {
+                        println!("Err: {reason}");
+                        break;
+                    }
 
                 }
             }
