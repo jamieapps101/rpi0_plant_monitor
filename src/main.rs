@@ -1,6 +1,6 @@
 use std::time::Duration;
 use futures_util::StreamExt;
-use tokio::{sync::mpsc::channel,time::sleep};
+use tokio::{sync::{mpsc::channel,Mutex},time::sleep};
 use std::sync::Arc;
 
 mod util;
@@ -35,7 +35,7 @@ async fn main() {
     println!("Done");
 
     // init actuation
-    let gpio = Arc::new(Gpio::new());
+    let gpio_arcmut = Arc::new(Mutex::new(Gpio::new()));
 
     let (event_sink,mut event_source) = channel::<Event>(5);
     // create time management
@@ -58,7 +58,7 @@ async fn main() {
         // setup async for receiving messages
         // accepts json commands, eg:
         // "{\"gpio\":1,\"state\":\"High\"}"
-        let gpio_c = gpio.clone();
+        let gpio_arcmut_c = gpio_arcmut.clone();
         tokio::spawn(async move {
             while let Some(msg_opt) = msg_stream.next().await {
                 if let Some(msg) = msg_opt {
@@ -67,7 +67,11 @@ async fn main() {
 
                     let command : Result<Command, serde_json::Error> = serde_json::from_str(message_content);
                     match command {
-                        Ok(command) => (*gpio_c).set(command),
+                        Ok(command) => {
+                            let gpio_mut = &*gpio_arcmut_c;
+                            let mut gpio = gpio_mut.lock().await;
+                            gpio.set(command);
+                        },
                         Err(reason) => println!("Unknown message: {message_content}\n({reason})")
                     }
                 }
