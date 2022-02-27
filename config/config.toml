@@ -1,0 +1,11 @@
+[mqtt]
+server          = "tcp://ubuntu2:31883"
+client_id       = "client_0"
+publish_topic   = "telegraf/test"
+subscribe_topic = "plant_monitor/test"
+qos             = 0
+
+[sampling]
+sample_period_seconds = 60
+measurement_name      = "atmospheric"
+tags                  = [["source","pzero"]]
