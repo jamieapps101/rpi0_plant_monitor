@@ -37,11 +37,23 @@ pub struct Command {
 mod test {
     use serde_json;
     use super::*;
+    use std::thread;
+    use std::time::Duration;
     #[ignore]
     #[test]
     fn demo_command_serial() {
         let c = Command { gpio: 1, state: GpioState:: High};
         let c_serial = serde_json::json!(c);
         println!("c_serial: {c_serial}");
+    }
+    
+    #[ignore]
+    #[test]
+    fn led_blink() {
+        let mut pin = rppal_gpio::new().unwrap().get(5).unwrap().into_output();
+        loop {
+            pin.toggle();
+            thread::sleep(Duration::from_millis(500));
+        }
     }
 }

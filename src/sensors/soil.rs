@@ -1,7 +1,8 @@
 // use linux_embedded_hal::I2cdev;
 use linux_embedded_hal::I2cdev;
-use linux_embedded_hal::i2cdev::core::I2CDevice;
-// use embedded_hal::blocking::i2c::Write;
+// use embedded_hal::i2c::blocking::{I2c};
+// use linux_embedded_hal::i2cdev::core::I2CDevice;
+use embedded_hal::blocking::i2c::{Write,Read};
 use std::path::Path;
 
 use crate::influx::Field;
@@ -13,14 +14,14 @@ pub struct SoilSensor {
 
 impl SoilSensor {
     pub fn new<P: AsRef<Path>>(path: P, address: u8) -> Self {
-        let adc = ADS1115::new(path,address);
+        let mut adc = ADS1115::new(path,address);
+        adc.set_full_scale(Scale::FsPm4_096v);
         Self { adc }
     }
 
     pub fn measure(&mut self) -> [Field<f32>;1] {
-        let measurement = self.adc.measure();
-        let m = (measurement as f32)/(u16::MAX as f32);
-        [("MoistureContent", m).into()]
+        let m = self.adc.measure();
+        [("moisture", m).into()]
     }
 }
 
@@ -31,23 +32,21 @@ struct ADS1115 {
     address: u8,
     conf_reg_msb: u8,
     conf_reg_lsb: u8,
+    scale: Scale,
 }
+
+const CONFIG_REG_ADDR : u8 = 1;
+const CONVERSION_REG_ADDR : u8 = 0;
 
 impl ADS1115 {
     pub fn new<P: AsRef<Path>>(path: P, address: u8) -> Self {
         let i2c_device = I2cdev::new(path).unwrap();
-        let conf_reg_msb = 0b01000000;
-        let conf_reg_lsb = 0b00000011;
-        let mut s = Self { i2c_device, address, conf_reg_msb, conf_reg_lsb };
-        s.init();
-        s.set_full_scale(Scale::FsPm6_144v);
-        s.set_channel(1);
+        let conf_reg_msb = 0b01000100;
+        let conf_reg_lsb = 0b10000011;
+        let scale = Scale::FsPm2_048v; // default value
+        let mut s = Self { i2c_device, address, conf_reg_msb, conf_reg_lsb, scale };
         s.update_config();
         s
-    }
-
-    fn init(&mut self) {
-        self.write_to_config_reg(self.conf_reg_msb,self.conf_reg_lsb);
     }
 
     fn measure(&mut self) -> f32 {
@@ -62,76 +61,67 @@ impl ADS1115 {
             value ^= 0x8000;
             is_neg = true;
         }
-
+        
         let mut f_value = value as f32;
         if is_neg {
             f_value *= -1.0;
         }
-
-        f_value
+        f_value*self.scale.get_scale()
     }
     fn set_full_scale(&mut self, scale: Scale) {
         // clear bits
-        self.conf_reg_msb ^= 0b00001110;
+        self.conf_reg_msb &= !0b00001110;
         self.conf_reg_msb |= scale.into_bits()<<1 ;
+        self.scale = scale;
+        self.update_config();
     }
 
     fn set_channel(&mut self, channel: u8) {
         assert!(channel < 4);
         // clear bits
-        self.conf_reg_msb ^= 0b01110000;
+        self.conf_reg_msb &= !0b01110000;
         self.conf_reg_msb |= 0b01000000 | (channel<<4) ;
+        self.update_config();
     }
 
     fn update_config(&mut self) {
         self.write_to_config_reg(self.conf_reg_msb,self.conf_reg_lsb);
+        self.check_config_reg();
+    }
+
+    fn check_config_reg(&mut self) {
+        self.i2c_device.write(self.address, &[CONFIG_REG_ADDR]).unwrap();
+        let mut data = [0u8; 2];
+        self.i2c_device.read(self.address,&mut data).unwrap();
+        let mut err = false;
+        if self.conf_reg_msb != data[0] && (0b10000000^self.conf_reg_msb) != data[0] {
+            err = true;
+        }
+        if self.conf_reg_lsb != data[1] {
+            err = true;
+        }
+        if err {
+            panic!("config not set properly.");
+        }
     }
 
     fn write_to_config_reg(&mut self, data_msb: u8, data_lsb: u8) {
         // send address and aim pointer reg to conversion reg
         // then write data
-        self.i2c_device.write(&[self.address,0b1,data_msb,data_lsb]).unwrap()
+        self.i2c_device.write(self.address, &[CONFIG_REG_ADDR,data_msb,data_lsb]).unwrap();
     }
 
     fn read_conv_reg(&mut self, data_msb: &mut u8, data_lsb: &mut u8) {
         // send address and aim pointer reg to conversion reg
-        self.i2c_device.write(&[self.address, 0b0]).unwrap();
+        self.i2c_device.write(self.address, &[CONVERSION_REG_ADDR]).unwrap();
         // read 2 bytes
         let mut data = [0u8; 2];
-        self.i2c_device.read(&mut data).unwrap();
+        self.i2c_device.read(self.address,&mut data).unwrap();
         *data_msb = data[0];
         *data_lsb = data[1];
     }
 
 }
-
-// struct ConversionRegister {
-
-// }
-
-// impl ConversionRegister {
-
-// }
-
-// /// Operational status/single-shot conversion start
-// enum Os {
-//     /// Begin conversion
-//     BeginConv,
-//     /// Do nothing
-//     NoEffect,
-// }
-
-// /// Input multiplexer configuration
-// enum Mux {
-//   AinpAin0AndAinnAin1, // 000, default
-//   AinpAin0AndAinnAin3, // 001
-//   AinpAin1AndAinnAin3, // 010
-//   AinpAin2AndAinnAin3, // 011
-//   AinpAin0AndAinnGnd, // 100
-//   AinpAin1AndAinnGnd, // 101
-//   AinpAin2AndAinnGnd, // 110
-//   AinpAin3AndAinnGnd, // 111
-// }
 
 #[allow(dead_code)]
 /// Programmable gain amplifier configuration
@@ -145,7 +135,8 @@ enum Scale {
 }
 
 impl Scale {
-    fn into_bits(self)-> u8 {
+    #[allow(clippy::wrong_self_convention)]
+    fn into_bits(&self)-> u8 {
         match self {
             Scale::FsPm6_144v => 0b000,
             Scale::FsPm4_096v => 0b001,
@@ -158,36 +149,32 @@ impl Scale {
 
     fn get_scale(&self) -> f32 {
         match self {
-            Scale::FsPm6_144v => (6.144/2.0)/2.0f32.powi(15),
-            Scale::FsPm4_096v => (4.096/2.0)/2.0f32.powi(15),
-            Scale::FsPm2_048v => (2.048/2.0)/2.0f32.powi(15),
-            Scale::FsPm1_024v => (1.024/2.0)/2.0f32.powi(15),
-            Scale::FsPm0_512v => (0.512/2.0)/2.0f32.powi(15),
-            Scale::FsPm0_256v => (0.256/2.0)/2.0f32.powi(15),
+            Scale::FsPm6_144v => 6.144/2.0f32.powi(15),
+            Scale::FsPm4_096v => 4.096/2.0f32.powi(15),
+            Scale::FsPm2_048v => 2.048/2.0f32.powi(15),
+            Scale::FsPm1_024v => 1.024/2.0f32.powi(15),
+            Scale::FsPm0_512v => 0.512/2.0f32.powi(15),
+            Scale::FsPm0_256v => 0.256/2.0f32.powi(15),
         }
     }
 }
 
-// /// Device operating mode
-// enum Mode {
-//     ContinuousConversion,
-//     SingleShot,
-// }
 
-// enum DataRate {
-//     _8SPS , // 000
-//     _16SPS, // 001
-//     _32SPS, // 010
-//     _64SPS, // 011
-//     _128SPS, // 100
-//     _250SPS, // 101
-//     _475SPS, // 110
-//     _860SPS, // 111
-// }
-
-// enum CompMode {
-//     Traditional,
-//     Window
-// }
-
-// enum CompPol
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    #[ignore]
+    fn get_adc_reading() {
+        let mut ss = SoilSensor::new("/dev/i2c-1", 0x48);
+        let measurements : Vec<f32> =  (0..4).into_iter().map(|_| {
+            ss.adc.update_config();
+            let reading = ss.measure();
+            reading[0].value
+        }).collect();
+        println!("measurements: {measurements:?}");
+        ss.adc.set_channel(0);
+        ss.adc.update_config();
+        println!("{:08b}-{:08b}",ss.adc.conf_reg_msb,ss.adc.conf_reg_lsb);
+    }
+}
