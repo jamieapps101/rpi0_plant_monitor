@@ -1,4 +1,5 @@
-use serde_derive::Deserialize;
+use common::serde_derive::Deserialize;
+use common::toml;
 use std::{
     fs::File,
     io::{BufReader,prelude::*},
@@ -32,12 +33,14 @@ pub fn load<P: AsRef<Path>>(path: P) -> Result<Config,ConfigLoadErr> {
 
 
 #[derive(Deserialize,PartialEq,Debug)]
+#[serde(crate = "common::serde")]
 pub struct Config {
     pub mqtt: MqttConfig,
     pub sampling: SamplingConfig
 }
 
 #[derive(Deserialize,PartialEq,Debug,Clone)]
+#[serde(crate = "common::serde")]
 pub struct MqttConfig {
     pub server: String,
     pub client_id: String,
@@ -47,6 +50,7 @@ pub struct MqttConfig {
 }
 
 #[derive(Deserialize,PartialEq,Debug)]
+#[serde(crate = "common::serde")]
 pub struct SamplingConfig {
     pub sample_period_seconds: u64,
     pub measurement_name: String,

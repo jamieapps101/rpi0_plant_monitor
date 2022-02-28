@@ -1,10 +1,11 @@
-use paho_mqtt::{
+use common::paho_mqtt::{
     AsyncClient, 
     MessageBuilder, 
     CreateOptionsBuilder,
     AsyncReceiver,
     message::Message,
-    create_options::PersistenceType
+    create_options::PersistenceType,
+    Error
 };
 use std::string::ToString;
 use crate::config::MqttConfig;
@@ -119,7 +120,7 @@ pub struct DBConnection {
 }
 
 impl DBConnection {
-    pub async fn new(config: MqttConfig) -> Result<(Self,AsyncReceiver<Option<Message>>),paho_mqtt::Error> {
+    pub async fn new(config: MqttConfig) -> Result<(Self,AsyncReceiver<Option<Message>>),Error> {
         let create_opts = CreateOptionsBuilder::new()
             .server_uri(config.server)
             .client_id(config.client_id)
@@ -135,7 +136,7 @@ impl DBConnection {
         },stream))
     }
 
-    pub async fn send<T : std::fmt::Display> (&mut self, data: &Sample<'_,T> ) -> Result<(),paho_mqtt::Error> {
+    pub async fn send<T : std::fmt::Display> (&mut self, data: &Sample<'_,T> ) -> Result<(),Error> {
         let msg = MessageBuilder::new()
             .topic(self.publish_topic.as_str())
             .payload(data.to_string())
@@ -148,6 +149,7 @@ impl DBConnection {
 #[cfg(test)]
 mod test {
     use super::*;
+    use common::tokio;
 
     #[tokio::test]
     #[ignore]

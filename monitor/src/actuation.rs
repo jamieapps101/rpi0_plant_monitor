@@ -1,4 +1,4 @@
-use serde_derive::{Deserialize,Serialize};
+use common::serde_derive::{Deserialize,Serialize};
 use rppal::gpio::Gpio as rppal_gpio;
 
 pub struct Gpio {
@@ -6,6 +6,7 @@ pub struct Gpio {
 }
 
 #[derive(Debug,Deserialize,Serialize)]
+#[serde(crate = "common::serde")]
 pub enum GpioState { High, Low }
 
 impl Gpio {
@@ -25,6 +26,7 @@ impl Gpio {
 }
 
 #[derive(Deserialize,Serialize)]
+#[serde(crate = "common::serde")]
 pub struct Command {
     gpio: u8, 
     state: GpioState,

@@ -2,7 +2,7 @@ pub enum Event {
     Tick,
 }
 
-use tokio::{sync::mpsc::Sender,time::sleep};
+use common::tokio::{sync::mpsc::Sender,time::sleep};
 use std::time::Duration;
 pub async fn ticker(event_sink: Sender<Event>, period: u64) {
     loop {
