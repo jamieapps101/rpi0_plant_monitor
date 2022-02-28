@@ -9,7 +9,11 @@ pub struct Gpio {
 
 #[derive(Debug,Deserialize,Serialize)]
 #[serde(crate = "common::serde")]
-pub enum GpioState { High, Low }
+pub enum GpioAction { On, Off, Toggle }
+
+#[derive(Debug,Deserialize,Serialize)]
+#[serde(crate = "common::serde")]
+pub enum GpioOutput { Led, Pump }
 
 impl Gpio {
     pub fn new() -> Self { 
@@ -19,10 +23,11 @@ impl Gpio {
     }
 
     pub fn set(&mut self, c: Command) {
-        println!("Setting pin {} {:?}",c.gpio,c.state);
-        match c.state {
-            GpioState::High => self.led_pin.set_high(),
-            GpioState::Low  => self.led_pin.set_low(),
+        println!("Setting pin {} {:?}",c.gpio,c.action);
+        match c.action {
+            GpioAction::On => self.led_pin.set_high(),
+            GpioAction::Off  => self.led_pin.set_low(),
+            GpioAction::Toggle => self.led_pin.toggle(),
         }
         
     }
@@ -32,7 +37,7 @@ impl Gpio {
 #[serde(crate = "common::serde")]
 pub struct Command {
     gpio: u8, 
-    state: GpioState,
+    action: GpioAction,
 }
 
 #[cfg(test)]
