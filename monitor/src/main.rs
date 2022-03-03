@@ -7,18 +7,15 @@ use std::sync::Arc;
 
 mod util;
 mod influx;
-#[allow(dead_code)]
 mod sensors;
-#[allow(dead_code)]
 mod actuation;
 mod config;
 
 use util::Event;
 use influx::{DBConnection,Sample};
-#[allow(unused_imports)]
 use sensors::{BME280,SoilSensor};
 use config::load;
-use actuation::{Command,Gpio};
+use actuation::{Command,Gpio,GpioAction};
 
 
 #[tokio::main(flavor = "current_thread")]
@@ -60,7 +57,9 @@ async fn main() {
         // setup async for receiving messages
         // accepts json commands, eg:
         // "{\"gpio\":1,\"state\":\"High\"}"
+        let (gc_s, mut gc_r) = channel::<Command>(5);
         let gpio_arcmut_c = gpio_arcmut.clone();
+        let gc_s_msg = gc_s.clone();
         tokio::spawn(async move {
             while let Some(msg_opt) = msg_stream.next().await {
                 if let Some(msg) = msg_opt {
@@ -70,12 +69,31 @@ async fn main() {
                     let command : Result<Command, serde_json::Error> = serde_json::from_str(message_content);
                     match command {
                         Ok(command) => {
-                            let gpio_mut = &*gpio_arcmut_c;
-                            let mut gpio = gpio_mut.lock().await;
-                            gpio.set(command);
+                            gc_s_msg.send(command).await.unwrap();
                         },
                         Err(reason) => println!("Unknown message: {message_content}\n({reason})")
                     }
+                    
+                }
+            }
+        });
+        
+        // gpio control loop 
+        tokio::spawn(async move {
+            while let Some(command) = gc_r.recv().await {
+                let gpio_mut = &*gpio_arcmut_c;
+                let mut gpio = gpio_mut.lock().await;
+                if let GpioAction::Pulse(period) = command.action {
+                    let on_command  = Command { output: command.output, action: GpioAction::On};
+                    let off_command = Command { output: command.output, action: GpioAction::Off};
+                    let gc_s_temp = gc_s.clone();
+                    tokio::spawn(async move {
+                        sleep(Duration::from_secs(period)).await;
+                        gc_s_temp.send(off_command).await.unwrap()
+                    });
+                    gpio.set(on_command);
+                } else {
+                    gpio.set(command);
                 }
             }
         });

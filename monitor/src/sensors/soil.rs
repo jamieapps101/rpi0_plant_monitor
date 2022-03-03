@@ -65,6 +65,7 @@ impl ADS1115 {
         self.update_config();
     }
 
+    #[allow(dead_code)]
     fn set_channel(&mut self, channel: u8) {
         assert!(channel < 4);
         // clear bits
