@@ -11,15 +11,15 @@ echo "-> Install config file"
 sudo rm -rf /etc/plant_monitor
 sudo mkdir /etc/plant_monitor
 if test -f "./config/config.toml"; then
-    sudo cp ./config/config.toml /etc/plant_monitor/config.toml
+    sudo cp ./monitor/config/config.toml /etc/plant_monitor/config.toml
 else
     echo "-> Could not find ./config/config.toml, using example file"
-    sudo cp ./config/config.toml.example /etc/plant_monitor/config.toml
+    sudo cp ./monitor/config/config.toml.example /etc/plant_monitor/config.toml
 fi
 
 echo "-> Install binary"
 # sudo cp ./target/release/rpi0_plant_monitor /usr/bin/rpi0_plant_monitor
-sudo cp ./target/debug/rpi0_plant_monitor /usr/bin/rpi0_plant_monitor
+sudo cp ./target/debug/monitor /usr/bin/rpi0_plant_monitor
 
 echo "-> Setup systemd scripts"
 sudo cp ./scripts/rpi0_plant_monitor.service /etc/systemd/system/
