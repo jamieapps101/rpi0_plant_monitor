@@ -34,7 +34,6 @@ impl Gpio {
     }
 
     pub fn set(&mut self, c: Command) {
-        println!("Setting pin {:?} {:?}",c.output,c.action);
         let output_ref = match c.output {
             GpioOutput::Led  => &mut (self.led_pin),
             GpioOutput::Pump => &mut (self.pump_pin),
@@ -64,7 +63,7 @@ mod test {
     #[ignore]
     #[test]
     fn demo_command_serial() {
-        let c = Command { output: GpioOutput::Led , action: GpioAction::On };
+        let c = Command { output: GpioOutput::Led , action: GpioAction::Pulse(4) };
         let c_serial = serde_json::json!(c);
         println!("c_serial: {c_serial}");
     }

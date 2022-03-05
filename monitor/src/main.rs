@@ -75,7 +75,6 @@ async fn main() {
             while let Some(msg_opt) = msg_stream.next().await {
                 if let Some(msg) = msg_opt {
                     let message_content = std::str::from_utf8(msg.payload()).unwrap();
-                    println!("Got message: \"{message_content}\"");
 
                     let command : Result<Command, serde_json::Error> = serde_json::from_str(message_content);
                     match command {
