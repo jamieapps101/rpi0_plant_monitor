@@ -1,3 +1,6 @@
+echo "Checking for mistakes"
+cargo check
+
 echo "Synchronising source files"
 rsync -a \
     --delete \
