@@ -21,10 +21,21 @@ use actuation::{Command,Gpio,GpioAction};
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     // load config toml, from somewhere.
-    print!("Reading config...       ");
-    let config =  load("./config/config.toml")
-        .or_else(|_| load("/etc/plant_monitor/config.toml"))
-        .or_else(|_| load("./config/config.toml.example")).unwrap();
+    println!("Reading config...       ");
+    let mut config : Option<config::Config> = None;
+    let config_options = [
+        "./monitor/config/config.toml",
+        "/etc/plant_monitor/config.toml",
+        "./monitor/config/config.toml.example",
+    ];
+    for config_path in config_options.iter() {
+        if let Ok(c) = load(config_path) {
+            println!("-> Reading from {config_path}");
+            config = Some(c);
+            break
+        }
+    }
+    let config = config.or_else(|| panic!("No config detected")).unwrap();
     println!("Done");
 
     // init sensor
