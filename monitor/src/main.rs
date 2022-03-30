@@ -45,7 +45,7 @@ async fn main() {
     println!("Done");
 
     // init actuation
-    let gpio_arcmut = Arc::new(Mutex::new(Gpio::new()));
+    let gpio_arcmut = Arc::new(Mutex::new(Gpio::new(config.hardware)));
 
     let (event_sink,mut event_source) = channel::<Event>(5);
     // create time management
@@ -83,12 +83,12 @@ async fn main() {
                         },
                         Err(reason) => println!("Unknown message: {message_content}\n({reason})")
                     }
-                    
+
                 }
             }
         });
-        
-        // gpio control loop 
+
+        // gpio control loop
         tokio::spawn(async move {
             while let Some(command) = gc_r.recv().await {
                 let gpio_mut = &*gpio_arcmut_c;

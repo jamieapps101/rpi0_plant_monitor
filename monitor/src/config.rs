@@ -36,7 +36,8 @@ pub fn load<P: AsRef<Path>>(path: P) -> Result<Config,ConfigLoadErr> {
 #[serde(crate = "common::serde")]
 pub struct Config {
     pub mqtt: MqttConfig,
-    pub sampling: SamplingConfig
+    pub sampling: SamplingConfig,
+    pub hardware: HardwareConfig,
 }
 
 #[derive(Deserialize,PartialEq,Debug,Clone)]
@@ -57,6 +58,13 @@ pub struct SamplingConfig {
     pub tags: Vec<(String,String)>
 }
 
+#[derive(Deserialize,PartialEq,Debug)]
+#[serde(crate = "common::serde")]
+pub struct HardwareConfig {
+    pub led_pin: u8,
+    pub pump_pin: u8,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -71,11 +79,15 @@ mod test {
                 publish_topic     : "telegraf/topic/here".to_owned(),
                 subscribe_topic   : "receive/topic/here".to_owned(),
                 qos       : 0
-            }, 
+            },
             sampling: SamplingConfig {
                 sample_period_seconds : 60,
-                measurement_name      : "atmospheric".to_owned(),
+                measurement_name      : "plant".to_owned(),
                 tags                  : vec![("source".to_owned(),"pzero".to_owned())]
+            },
+            hardware: HardwareConfig {
+                led_pin: 5,
+                pump_pin: 22,
             }
         };
         assert_eq!(loaded_config,ref_config);

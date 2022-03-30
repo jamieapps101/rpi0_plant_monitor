@@ -1,6 +1,7 @@
 use common::serde_derive::{Deserialize,Serialize};
 use rppal::gpio::Gpio as rppal_gpio;
 use rppal::gpio::OutputPin;
+use crate::config::HardwareConfig;
 
 pub struct Gpio {
     led_pin: OutputPin,
@@ -10,13 +11,13 @@ pub struct Gpio {
 #[derive(Debug,Deserialize,Serialize)]
 #[serde(crate = "common::serde")]
 /// List of avaliable actions to perform on gpio
-pub enum GpioAction { 
+pub enum GpioAction {
     /// Turn output on
-    On, 
+    On,
     /// Turn output off
-    Off, 
+    Off,
     /// Toggle output
-    Toggle, 
+    Toggle,
     /// Pulse output on for n seconds
     Pulse(u64)
 }
@@ -26,11 +27,11 @@ pub enum GpioAction {
 pub enum GpioOutput { Led, Pump }
 
 impl Gpio {
-    pub fn new() -> Self { 
-        let dev = rppal_gpio::new().unwrap(); 
-        let led_pin = dev.get(5).unwrap().into_output();
-        let pump_pin = dev.get(13).unwrap().into_output();
-        Self { led_pin, pump_pin } 
+    pub fn new(config: HardwareConfig) -> Self {
+        let dev = rppal_gpio::new().unwrap();
+        let led_pin = dev.get(config.led_pin).unwrap().into_output();
+        let pump_pin = dev.get(config.pump_pin).unwrap().into_output();
+        Self { led_pin, pump_pin }
     }
 
     pub fn set(&mut self, c: Command) {
@@ -43,14 +44,14 @@ impl Gpio {
             GpioAction::Off    => output_ref.set_low(),
             GpioAction::Toggle => output_ref.toggle(),
             GpioAction::Pulse(_seconds) => unreachable!(),
-        }   
+        }
     }
 }
 
 #[derive(Deserialize,Serialize,Debug)]
 #[serde(crate = "common::serde")]
 pub struct Command {
-    pub output: GpioOutput, 
+    pub output: GpioOutput,
     pub action: GpioAction,
 }
 
@@ -67,7 +68,7 @@ mod test {
         let c_serial = serde_json::json!(c);
         println!("c_serial: {c_serial}");
     }
-    
+
     #[ignore]
     #[test]
     fn led_blink() {
