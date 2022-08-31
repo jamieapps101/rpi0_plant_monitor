@@ -1,26 +1,21 @@
+use crate::config::MqttConfig;
 use common::paho_mqtt::{
-    AsyncClient, 
-    MessageBuilder, 
-    CreateOptionsBuilder,
-    AsyncReceiver,
-    message::Message,
-    create_options::PersistenceType,
-    Error
+    create_options::PersistenceType, message::Message, AsyncClient, AsyncReceiver,
+    CreateOptionsBuilder, Error, MessageBuilder,
 };
 use std::string::ToString;
-use crate::config::MqttConfig;
 
 ////////////////////////////////
 ////////// Data Types //////////
 ////////////////////////////////
 pub struct Tag<'a> {
-    pub key:   &'a str,
+    pub key: &'a str,
     pub value: &'a str,
 }
 
-impl<'a> From<(&'a str,&'a str)> for Tag<'a> {
+impl<'a> From<(&'a str, &'a str)> for Tag<'a> {
     #[inline(always)]
-    fn from(val: (&'a str,&'a str)) -> Self {
+    fn from(val: (&'a str, &'a str)) -> Self {
         Tag {
             key: val.0,
             value: val.1,
@@ -28,14 +23,20 @@ impl<'a> From<(&'a str,&'a str)> for Tag<'a> {
     }
 }
 
-pub struct Field<'a,T> where T: std::fmt::Display {
-    pub key:   &'a str,
+pub struct Field<'a, T>
+where
+    T: std::fmt::Display,
+{
+    pub key: &'a str,
     pub value: T,
 }
 
-impl<'a,T> From<(&'a str,T)> for Field<'a,T>  where T: std::fmt::Display {
+impl<'a, T> From<(&'a str, T)> for Field<'a, T>
+where
+    T: std::fmt::Display,
+{
     #[inline(always)]
-    fn from(val: (&'a str,T)) -> Self {
+    fn from(val: (&'a str, T)) -> Self {
         Field {
             key: val.0,
             value: val.1,
@@ -43,70 +44,102 @@ impl<'a,T> From<(&'a str,T)> for Field<'a,T>  where T: std::fmt::Display {
     }
 }
 
-
-pub struct Sample<'a,T> where T: std::fmt::Display {
+pub struct Sample<'a, T>
+where
+    T: std::fmt::Display,
+{
     pub measurement: &'a str,
-    pub tags:        &'a[Tag<'a>],
-    pub fields:      &'a[Field<'a,T>],
-    pub time_stamp:  Option<u64>,
+    pub tags: &'a [Tag<'a>],
+    pub fields: &'a [Field<'a, T>],
+    pub time_stamp: Option<u64>,
 }
 
-impl<'a,T> ToString for Sample<'a,T> where T: std::fmt::Display {
+impl<'a, T> ToString for Sample<'a, T>
+where
+    T: std::fmt::Display,
+{
     // this formats to the influx data format
     #[inline(always)]
     fn to_string(&self) -> String {
-        let tag_string = self.tags.iter().map(|t| {
-            t.to_string()
-        }).collect::<Vec<String>>().join("");
+        let tag_string = self
+            .tags
+            .iter()
+            .map(|t| t.to_string())
+            .collect::<Vec<String>>()
+            .join("");
 
         let field_string = if !self.fields.is_empty() {
-            let mut temp  : String = self.fields[0].to_string_0th();
-            temp += self.fields.iter().skip(1).map(|f| {
-                f.to_string()
-            }).collect::<Vec<String>>().join("").as_str();
+            let mut temp: String = self.fields[0].to_string_0th();
+            temp += self
+                .fields
+                .iter()
+                .skip(1)
+                .map(|f| f.to_string())
+                .collect::<Vec<String>>()
+                .join("")
+                .as_str();
             temp
         } else {
             String::from("")
         };
 
         if let Some(time) = self.time_stamp {
-            format!("{}{}{} {}",self.measurement,tag_string,field_string,time)
+            format!(
+                "{}{}{} {}",
+                self.measurement, tag_string, field_string, time
+            )
         } else {
-            format!("{}{}{}",self.measurement,tag_string,field_string)
+            format!("{}{}{}", self.measurement, tag_string, field_string)
         }
     }
 }
 
-pub struct SampleStack<'a,'b,T> where T: std::fmt::Display {
-    pub samples: &'b[Sample<'a,T>],
+pub struct SampleStack<'a, 'b, T>
+where
+    T: std::fmt::Display,
+{
+    pub samples: &'b [Sample<'a, T>],
 }
 
-impl<'a,'b,T>ToString for SampleStack<'a,'b,T> where T: std::fmt::Display {
+impl<'a, 'b, T> ToString for SampleStack<'a, 'b, T>
+where
+    T: std::fmt::Display,
+{
     // this formats to the influx data format
     #[inline(always)]
     fn to_string(&self) -> String {
-        self.samples.iter().map(|s| s.to_string()).collect::<Vec<String>>().join("\n")
+        self.samples
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 }
 
 impl<'a> ToString for Tag<'a> {
     #[inline(always)]
     fn to_string(&self) -> String {
-            format!(",{}={}",self.key,self.value)
+        format!(",{}={}", self.key, self.value)
     }
 }
 
-impl<'a,T> Field<'a,T> where T: std::fmt::Display {
+impl<'a, T> Field<'a, T>
+where
+    T: std::fmt::Display,
+{
     #[inline(always)]
     fn to_string_0th(&self) -> String {
-        format!(" {}={}",self.key,self.value)
+        format!(" {}={}", self.key, self.value)
     }
 }
 
-impl<'a,T> std::fmt::Display for Field<'a,T> where T: std::fmt::Display {
+impl<'a, T> std::fmt::Display for Field<'a, T>
+where
+    T: std::fmt::Display,
+{
     #[inline(always)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, ",{}={}",self.key,self.value)
+        write!(f, ",{}={}", self.key, self.value)
     }
 }
 
@@ -120,7 +153,7 @@ pub struct DBConnection {
 }
 
 impl DBConnection {
-    pub async fn new(config: MqttConfig) -> Result<(Self,AsyncReceiver<Option<Message>>),Error> {
+    pub async fn new(config: MqttConfig) -> Result<(Self, AsyncReceiver<Option<Message>>), Error> {
         let create_opts = CreateOptionsBuilder::new()
             .server_uri(config.server)
             .client_id(config.client_id)
@@ -128,15 +161,18 @@ impl DBConnection {
             .finalize();
         let mut mqtt_client = AsyncClient::new(create_opts).unwrap();
         let stream = mqtt_client.get_stream(5);
-        mqtt_client.connect(None).await.unwrap();
+        mqtt_client.connect(None).await?;
         mqtt_client.subscribe_many(&[config.subscribe_topic], &[config.qos as i32]);
-        Ok((Self {
-            publish_topic: config.publish_topic,
-            client: mqtt_client,
-        },stream))
+        Ok((
+            Self {
+                publish_topic: config.publish_topic,
+                client: mqtt_client,
+            },
+            stream,
+        ))
     }
 
-    pub async fn send<T : std::fmt::Display> (&mut self, data: &Sample<'_,T> ) -> Result<(),Error> {
+    pub async fn send<T: std::fmt::Display>(&mut self, data: &Sample<'_, T>) -> Result<(), Error> {
         let msg = MessageBuilder::new()
             .topic(self.publish_topic.as_str())
             .payload(data.to_string())
@@ -156,9 +192,9 @@ mod test {
     async fn test_mqtt_connection() {
         let config = crate::config::load("./config/config.toml").unwrap();
         println!("config:\n{config:?}");
-        println!("server:        {:?}",config.mqtt.server);
-        println!("client_id:     {:?}",config.mqtt.client_id);
-        println!("publish_topic: {:?}",config.mqtt.publish_topic);
+        println!("server:        {:?}", config.mqtt.server);
+        println!("client_id:     {:?}", config.mqtt.client_id);
+        println!("publish_topic: {:?}", config.mqtt.publish_topic);
         let create_opts = CreateOptionsBuilder::new()
             .server_uri(config.mqtt.server)
             .client_id(config.mqtt.client_id)
@@ -174,67 +210,88 @@ mod test {
     }
     #[test]
     fn no_tags_no_fields() {
-        let s : Sample<'_, &str> = Sample {
+        let s: Sample<'_, &str> = Sample {
             measurement: "weather",
-            tags:        &[],
-            fields:      &[],
-            time_stamp:  Some(1),
+            tags: &[],
+            fields: &[],
+            time_stamp: Some(1),
         };
-        assert_eq!(format!("weather 1"),s.to_string());
+        assert_eq!(format!("weather 1"), s.to_string());
     }
 
     #[test]
     fn no_tags_one_field() {
-        let s : Sample<'_, &str> = Sample {
+        let s: Sample<'_, &str> = Sample {
             measurement: "weather",
-            tags:        &[],
-            fields:      &[("temperature","82").into()],
-            time_stamp:  Some(1465839830100400200),
+            tags: &[],
+            fields: &[("temperature", "82").into()],
+            time_stamp: Some(1465839830100400200),
         };
-        assert_eq!(format!("weather temperature=82 1465839830100400200"),s.to_string());
+        assert_eq!(
+            format!("weather temperature=82 1465839830100400200"),
+            s.to_string()
+        );
     }
 
     #[test]
     fn no_tags_multi_field() {
-        let s : Sample<'_, &str> = Sample {
+        let s: Sample<'_, &str> = Sample {
             measurement: "weather",
-            tags:        &[],
-            fields:      &[("location","us-midwest").into(),("location","texas").into()],
-            time_stamp:  Some(01),
+            tags: &[],
+            fields: &[
+                ("location", "us-midwest").into(),
+                ("location", "texas").into(),
+            ],
+            time_stamp: Some(01),
         };
-        assert_eq!(format!("weather location=us-midwest,location=texas 1"),s.to_string());
+        assert_eq!(
+            format!("weather location=us-midwest,location=texas 1"),
+            s.to_string()
+        );
     }
 
     #[test]
     fn one_tag_no_fields() {
-        let s : Sample<'_, &str> = Sample {
+        let s: Sample<'_, &str> = Sample {
             measurement: "weather",
-            tags:        &[("location","us-midwest").into(),("season","summer").into()],
-            fields:      &[],
-            time_stamp:  Some(01),
+            tags: &[
+                ("location", "us-midwest").into(),
+                ("season", "summer").into(),
+            ],
+            fields: &[],
+            time_stamp: Some(01),
         };
-        assert_eq!(format!("weather,location=us-midwest,season=summer 1"),s.to_string());
+        assert_eq!(
+            format!("weather,location=us-midwest,season=summer 1"),
+            s.to_string()
+        );
     }
 
     #[test]
     fn multi_tag_no_fields() {
-        let s : Sample<'_, &str> = Sample {
+        let s: Sample<'_, &str> = Sample {
             measurement: "weather",
-            tags:        &[("temperature","82").into(),("humidity","43").into()],
-            fields:      &[],
-            time_stamp:  Some(01),
+            tags: &[("temperature", "82").into(), ("humidity", "43").into()],
+            fields: &[],
+            time_stamp: Some(01),
         };
-        assert_eq!(format!("weather,temperature=82,humidity=43 1"),s.to_string());
+        assert_eq!(
+            format!("weather,temperature=82,humidity=43 1"),
+            s.to_string()
+        );
     }
 
     #[test]
     fn one_tags_one_fields() {
-        let s : Sample<'_, &str> = Sample {
+        let s: Sample<'_, &str> = Sample {
             measurement: "weather",
-            tags:        &[("location","us-midwest").into()],
-            fields:      &[("temperature","82").into()],
-            time_stamp:  Some(1465839830100400200),
+            tags: &[("location", "us-midwest").into()],
+            fields: &[("temperature", "82").into()],
+            time_stamp: Some(1465839830100400200),
         };
-        assert_eq!(format!("weather,location=us-midwest temperature=82 1465839830100400200"),s.to_string());
+        assert_eq!(
+            format!("weather,location=us-midwest temperature=82 1465839830100400200"),
+            s.to_string()
+        );
     }
 }
